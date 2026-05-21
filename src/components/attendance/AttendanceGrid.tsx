@@ -138,17 +138,18 @@ export function AttendanceGrid() {
       {/* Table Container */}
       <div className="flex-1 overflow-auto rounded-xl border relative">
         <table className="w-full border-collapse font-technical">
-          <thead className="sticky top-0 z-30">
-            <tr className="bg-card">
-              <th className="sticky-column bg-card border-r border-b p-3 text-sm font-bold w-20">Roll</th>
+          <thead>
+            {/* Date Header Row - Sticky */}
+            <tr className="bg-card sticky top-0 z-30">
+              <th className="sticky-column sticky top-0 z-40 bg-card border-r border-b p-3 text-sm font-bold w-20">Roll</th>
               {daysInMonth.map(day => (
-                <th key={day.toISOString()} className="p-3 border-b border-r min-w-[60px] text-center">
+                <th key={day.toISOString()} className="p-3 border-b border-r min-w-[60px] text-center bg-card">
                   <div className="text-[10px] uppercase text-muted-foreground font-bold">{format(day, 'EEE')}</div>
                   <div className="text-sm font-bold">{format(day, 'd')}</div>
                 </th>
               ))}
             </tr>
-            {/* On Day Row */}
+            {/* On Day Row - Not Sticky */}
             <tr className="bg-muted/50">
               <th className="sticky-column bg-muted/50 border-r border-b p-2 text-xs font-bold">On Day</th>
               {daysInMonth.map(day => {
