@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useStore } from '@/lib/store';
@@ -72,6 +71,10 @@ export function AttendanceGrid() {
     return map;
   }, [onDaysDocs]);
 
+  const sortedOnDayKeys = useMemo(() => {
+    return Object.keys(classOnDays).sort();
+  }, [classOnDays]);
+
   const daysInMonth = useMemo(() => {
     return eachDayOfInterval({
       start: startOfMonth(currentDate),
@@ -88,14 +91,15 @@ export function AttendanceGrid() {
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Vibration Logic
+    // Vibration Logic: Vibrate only if marked present today and was absent on previous working day
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
-      const sortedOnDays = Object.keys(classOnDays).sort();
-      const currentIndex = sortedOnDays.indexOf(dateKey);
+      const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
-        const prevOnDayKey = sortedOnDays[currentIndex - 1];
+        const prevOnDayKey = sortedOnDayKeys[currentIndex - 1];
         const wasAbsentOnPrev = !classAttendance[prevOnDayKey]?.[roll];
-        if (wasAbsentOnPrev) window.navigator.vibrate([100, 50, 100]);
+        if (wasAbsentOnPrev) {
+          window.navigator.vibrate([150, 80, 150]);
+        }
       }
     }
 
@@ -180,26 +184,26 @@ export function AttendanceGrid() {
         </div>
       </div>
 
-      <div className="rounded-3xl border bg-card shadow-lg overflow-hidden border-border/50">
+      <div className="rounded-[2.5rem] border bg-card shadow-xl overflow-hidden border-border/50 relative">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse font-technical text-sm">
+          <table className="w-full border-separate border-spacing-0 font-technical text-sm">
             <thead>
-              <tr className="bg-muted/5 sticky top-0 z-30 border-b">
-                <th className="sticky-column z-40 bg-card/95 backdrop-blur-md border-r p-5 font-bold w-24 text-center text-lg">Roll</th>
+              <tr className="sticky top-0 z-50">
+                <th className="sticky-column bg-card/95 backdrop-blur-md border-r border-b p-5 font-bold w-24 text-center text-lg z-50">Roll</th>
                 {daysInMonth.map(day => (
-                  <th key={day.toISOString()} className="p-4 border-r min-w-[60px] text-center">
+                  <th key={day.toISOString()} className="p-4 border-r border-b min-w-[60px] text-center bg-card/95 backdrop-blur-md">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
                     <div className="text-lg font-bold">{format(day, 'd')}</div>
                   </th>
                 ))}
               </tr>
               <tr className="bg-muted/30">
-                <th className="sticky-column bg-muted/20 border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70">On-Day</th>
+                <th className="sticky-column bg-muted/20 border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40">On-Day</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
                   return (
-                    <td key={day.toISOString()} className="p-3 border-r border-b text-center">
+                    <td key={day.toISOString()} className="p-3 border-r border-b text-center bg-muted/5">
                       <button
                         onClick={() => handleToggleOnDay(dateKey)}
                         className={cn(
@@ -217,7 +221,7 @@ export function AttendanceGrid() {
             <tbody>
               {(selectedClass.students || []).map((student: any) => (
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
-                  <th className="sticky-column bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3">
+                  <th className="sticky-column bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40">
                     <span className="text-primary">{student.roll}</span>
                     <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
                       <Trash2 className="h-4 w-4" />
@@ -250,15 +254,15 @@ export function AttendanceGrid() {
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-primary/5 border-t-2 border-primary/20">
-                <th className="sticky-column bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary">Total Attend</th>
+            <tfoot className="sticky bottom-0 z-40">
+              <tr className="bg-primary/5 border-t-2 border-primary/20 backdrop-blur-md">
+                <th className="sticky-column bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40">Total Attend</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
                   const totalPresent = (selectedClass.students || []).filter((s: any) => classAttendance[dateKey]?.[s.roll]).length;
                   return (
-                    <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary">
+                    <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary bg-primary/5">
                       {isOnDay ? totalPresent : "-"}
                     </td>
                   );
