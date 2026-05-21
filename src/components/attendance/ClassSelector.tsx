@@ -4,25 +4,53 @@
 import { Plus } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useUser, useFirestore, useCollection } from '@/firebase';
+import { collection, doc, setDoc, query, orderBy } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface ClassSelectorProps {
   showAddButton?: boolean;
 }
 
 export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
-  const { classes, selectedClassId, setSelectedClassId, addClass } = useStore();
+  const { user } = useUser();
+  const db = useFirestore();
+  const { selectedClassId, setSelectedClassId } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
+  const classesQuery = useMemo(() => {
+    if (!user) return null;
+    return query(collection(db, 'users', user.uid, 'classes'), orderBy('name'));
+  }, [db, user]);
+
+  const { data: classes } = useCollection(classesQuery);
+
   const handleAddClass = () => {
-    if (newClassName.trim()) {
-      addClass(newClassName.trim());
+    if (newClassName.trim() && user) {
+      const classId = Date.now().toString();
+      const classRef = doc(db, 'users', user.uid, 'classes', classId);
+      
+      setDoc(classRef, {
+        id: classId,
+        name: newClassName.trim(),
+        students: []
+      }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: classRef.path,
+          operation: 'create',
+          requestResourceData: { name: newClassName }
+        }));
+      });
+
       setNewClassName('');
       setIsModalOpen(false);
+      setSelectedClassId(classId);
     }
   };
 
@@ -42,7 +70,7 @@ export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
       </div>
       
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {classes.map((cls) => (
+        {classes?.map((cls: any) => (
           <button
             key={cls.id}
             onClick={() => setSelectedClassId(cls.id)}

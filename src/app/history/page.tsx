@@ -1,3 +1,4 @@
+
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
@@ -14,18 +15,48 @@ import { Input } from '@/components/ui/input';
 import { Check, Search, Download, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
+import { query, collection, where, doc } from 'firebase/firestore';
 
 export default function HistoryPage() {
   const { user, loading: authLoading } = useUser();
-  const { classes, selectedClassId, setSelectedClassId, fineRate, setFineRate, attendance, onDays } = useStore();
+  const db = useFirestore();
+  const { selectedClassId, fineRate } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchRoll, setSearchRoll] = useState('');
-  const [isFineModalOpen, setIsFineModalOpen] = useState(false);
-  const [newFine, setNewFine] = useState(fineRate.toString());
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  const selectedClass = classes.find(c => c.id === selectedClassId);
+  // Fetch Class Metadata
+  const classRef = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return doc(db, 'users', user.uid, 'classes', selectedClassId);
+  }, [db, user, selectedClassId]);
+  const { data: selectedClass } = useDoc<any>(classRef);
+
+  // Fetch Data
+  const attendanceQuery = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return query(collection(db, 'users', user.uid, 'attendance'), where('classId', '==', selectedClassId));
+  }, [db, user, selectedClassId]);
+  const { data: attendanceDocs } = useCollection<any>(attendanceQuery);
+
+  const onDaysQuery = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return query(collection(db, 'users', user.uid, 'onDays'), where('classId', '==', selectedClassId));
+  }, [db, user, selectedClassId]);
+  const { data: onDaysDocs } = useCollection<any>(onDaysQuery);
+
+  const classAttendance = useMemo(() => {
+    const map: any = {};
+    attendanceDocs?.forEach(doc => { map[doc.dateKey] = doc.data; });
+    return map;
+  }, [attendanceDocs]);
+
+  const classOnDays = useMemo(() => {
+    const map: any = {};
+    onDaysDocs?.forEach(doc => { map[doc.dateKey] = true; });
+    return map;
+  }, [onDaysDocs]);
 
   const daysInMonth = useMemo(() => {
     return eachDayOfInterval({
@@ -34,16 +65,13 @@ export default function HistoryPage() {
     });
   }, [currentDate]);
 
-  const classAttendance = selectedClass ? attendance[selectedClass.id] || {} : {};
-  const classOnDays = selectedClass ? onDays[selectedClass.id] || {} : {};
-
   const totalOnDays = useMemo(() => {
     return daysInMonth.filter(day => classOnDays[format(day, 'yyyy-MM-dd')]).length;
   }, [daysInMonth, classOnDays]);
 
   const reportData = useMemo(() => {
     if (!selectedClass) return [];
-    return selectedClass.students.map(student => {
+    return (selectedClass.students || []).map((student: any) => {
       const absentDays = daysInMonth.filter(day => {
         const dateKey = format(day, 'yyyy-MM-dd');
         return classOnDays[dateKey] && !classAttendance[dateKey]?.[student.roll];
@@ -53,11 +81,11 @@ export default function HistoryPage() {
         absentDays,
         totalFine: absentDays * fineRate
       };
-    }).sort((a, b) => a.roll - b.roll);
+    }).sort((a: any, b: any) => a.roll - b.roll);
   }, [selectedClass, daysInMonth, classOnDays, classAttendance, fineRate]);
 
   const filteredReportData = searchRoll 
-    ? reportData.filter(d => d.roll.toString().includes(searchRoll))
+    ? reportData.filter((d: any) => d.roll.toString().includes(searchRoll))
     : reportData;
 
   const downloadPDF = () => {
@@ -74,7 +102,7 @@ export default function HistoryPage() {
     
     autoTable(doc, {
       head: [['Roll Number', 'Days Absent', 'Total Fine (BDT)']],
-      body: filteredReportData.map(d => [d.roll, d.absentDays, d.totalFine]),
+      body: filteredReportData.map((d: any) => [d.roll, d.absentDays, d.totalFine]),
       startY: 55,
       styles: { font: 'helvetica' },
       headStyles: { fillColor: [0, 125, 138] }
@@ -103,16 +131,10 @@ export default function HistoryPage() {
             ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <button 
-                    onClick={() => {
-                      setNewFine(fineRate.toString());
-                      setIsFineModalOpen(true);
-                    }}
-                    className="bg-secondary p-8 rounded-3xl flex items-center justify-between text-secondary-foreground shadow-sm hover:brightness-95 transition-all"
-                  >
+                  <div className="bg-secondary p-8 rounded-3xl flex items-center justify-between text-secondary-foreground shadow-sm">
                     <span className="font-headline text-3xl font-bold italic">Fine Rate:</span>
                     <span className="text-4xl font-technical font-bold">{fineRate} BDT</span>
-                  </button>
+                  </div>
 
                   <div className="bg-card p-8 rounded-3xl border flex flex-col justify-center space-y-3 shadow-sm">
                     <h2 className="text-xs font-headline text-muted-foreground uppercase tracking-widest text-center">Select Period</h2>
@@ -157,9 +179,9 @@ export default function HistoryPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedClass.students
-                            .filter(s => !searchRoll || s.roll.toString().includes(searchRoll))
-                            .map(student => (
+                          {(selectedClass.students || [])
+                            .filter((s: any) => !searchRoll || s.roll.toString().includes(searchRoll))
+                            .map((student: any) => (
                               <tr key={student.roll} className="hover:bg-muted/5 transition-colors">
                                 <th className="sticky-column bg-card p-6 border-r border-b font-bold text-xl">{student.roll}</th>
                                 {daysInMonth.map(day => {
@@ -187,7 +209,7 @@ export default function HistoryPage() {
                             {daysInMonth.map(day => {
                               const dateKey = format(day, 'yyyy-MM-dd');
                               const isOnDay = classOnDays[dateKey];
-                              const totalPresent = selectedClass.students.filter(s => classAttendance[dateKey]?.[s.roll]).length;
+                              const totalPresent = (selectedClass.students || []).filter((s: any) => classAttendance[dateKey]?.[s.roll]).length;
                               return (
                                 <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary">
                                   {isOnDay ? totalPresent : "-"}
@@ -214,31 +236,6 @@ export default function HistoryPage() {
         </div>
       </main>
 
-      <Dialog open={isFineModalOpen} onOpenChange={setIsFineModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-8">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-3xl italic">Daily Fine Rate</DialogTitle>
-          </DialogHeader>
-          <div className="py-8">
-            <Input
-              type="number"
-              value={newFine}
-              onChange={(e) => setNewFine(e.target.value)}
-              placeholder="Amount (BDT)"
-              className="bg-muted border-none rounded-2xl h-20 text-4xl text-center font-technical"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="flex-row gap-4">
-            <Button variant="ghost" onClick={() => setIsFineModalOpen(false)} className="flex-1 rounded-2xl h-16 text-xl">Cancel</Button>
-            <Button onClick={() => {
-              setFineRate(parseInt(newFine) || 0);
-              setIsFineModalOpen(false);
-            }} className="flex-1 rounded-2xl h-16 bg-primary text-xl">Save Rate</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem] border-none shadow-2xl">
           <DialogHeader className="p-6 md:p-10 border-b bg-muted/5">
@@ -259,7 +256,7 @@ export default function HistoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredReportData.map(item => (
+                    {filteredReportData.map((item: any) => (
                       <tr key={item.roll} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
                         <td className="p-4 md:p-6 font-bold text-xl md:text-2xl">{item.roll}</td>
                         <td className="p-4 md:p-6 text-center text-xl md:text-2xl">{item.absentDays}</td>

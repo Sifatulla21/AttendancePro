@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useStore } from '@/lib/store';
@@ -9,19 +10,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MonthSelector } from './MonthSelector';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
+import { doc, setDoc, deleteDoc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function AttendanceGrid() {
+  const { user } = useUser();
+  const db = useFirestore();
   const { 
-    classes, 
     selectedClassId, 
-    attendance, 
-    onDays, 
-    toggleAttendance, 
-    toggleOnDay,
-    addStudent,
-    deleteStudent,
-    deleteClass,
-    editClass,
+    setSelectedClassId,
     vibrationEnabled
   } = useStore();
 
@@ -31,7 +30,47 @@ export function AttendanceGrid() {
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [editClassName, setEditClassName] = useState('');
 
-  const selectedClass = classes.find(c => c.id === selectedClassId);
+  // Fetch Class Metadata
+  const classRef = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return doc(db, 'users', user.uid, 'classes', selectedClassId);
+  }, [db, user, selectedClassId]);
+  const { data: selectedClass } = useDoc<any>(classRef);
+
+  // Fetch Attendance & OnDays for the month
+  const attendanceQuery = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return query(
+      collection(db, 'users', user.uid, 'attendance'),
+      where('classId', '==', selectedClassId)
+    );
+  }, [db, user, selectedClassId]);
+  const { data: attendanceDocs } = useCollection<any>(attendanceQuery);
+
+  const onDaysQuery = useMemo(() => {
+    if (!user || !selectedClassId) return null;
+    return query(
+      collection(db, 'users', user.uid, 'onDays'),
+      where('classId', '==', selectedClassId)
+    );
+  }, [db, user, selectedClassId]);
+  const { data: onDaysDocs } = useCollection<any>(onDaysQuery);
+
+  const classAttendance = useMemo(() => {
+    const map: any = {};
+    attendanceDocs?.forEach(doc => {
+      map[doc.dateKey] = doc.data;
+    });
+    return map;
+  }, [attendanceDocs]);
+
+  const classOnDays = useMemo(() => {
+    const map: any = {};
+    onDaysDocs?.forEach(doc => {
+      map[doc.dateKey] = true;
+    });
+    return map;
+  }, [onDaysDocs]);
 
   const daysInMonth = useMemo(() => {
     return eachDayOfInterval({
@@ -40,49 +79,82 @@ export function AttendanceGrid() {
     });
   }, [currentDate]);
 
-  if (!selectedClass) return null;
-
-  const classAttendance = attendance[selectedClass.id] || {};
-  const classOnDays = onDays[selectedClass.id] || {};
+  if (!selectedClass || !user) return null;
 
   const handleToggleAttendance = (dateKey: string, roll: number) => {
     if (!classOnDays[dateKey]) return;
 
-    const isCurrentlyPresent = !!classAttendance[dateKey]?.[roll];
+    const currentDayData = classAttendance[dateKey] || {};
+    const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Vibration Logic: Vibrate only if student was absent on previous on-day and is now present
+    // Vibration Logic
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
-      const sortedOnDays = Object.keys(classOnDays)
-        .filter(d => classOnDays[d])
-        .sort();
-      
+      const sortedOnDays = Object.keys(classOnDays).sort();
       const currentIndex = sortedOnDays.indexOf(dateKey);
       if (currentIndex > 0) {
         const prevOnDayKey = sortedOnDays[currentIndex - 1];
         const wasAbsentOnPrev = !classAttendance[prevOnDayKey]?.[roll];
-        
-        if (wasAbsentOnPrev) {
-          window.navigator.vibrate([100, 50, 100]);
-        }
+        if (wasAbsentOnPrev) window.navigator.vibrate([100, 50, 100]);
       }
     }
 
-    toggleAttendance(selectedClass.id, dateKey, roll);
+    const docId = `${selectedClassId}_${dateKey}`;
+    const docRef = doc(db, 'users', user.uid, 'attendance', docId);
+    
+    setDoc(docRef, {
+      classId: selectedClassId,
+      dateKey,
+      data: { ...currentDayData, [roll]: willBePresent }
+    }, { merge: true }).catch(async () => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'write',
+        requestResourceData: { [roll]: willBePresent }
+      }));
+    });
+  };
+
+  const handleToggleOnDay = (dateKey: string) => {
+    const docId = `${selectedClassId}_${dateKey}`;
+    const docRef = doc(db, 'users', user.uid, 'onDays', docId);
+    
+    if (classOnDays[dateKey]) {
+      deleteDoc(docRef);
+    } else {
+      setDoc(docRef, { classId: selectedClassId, dateKey, active: true });
+    }
   };
 
   const handleAddStudent = () => {
     const rollNum = parseInt(newRoll);
-    if (!isNaN(rollNum)) {
-      addStudent(selectedClass.id, rollNum);
+    if (!isNaN(rollNum) && classRef) {
+      const updatedStudents = [...(selectedClass.students || []).filter((s: any) => s.roll !== rollNum), { roll: rollNum }]
+        .sort((a, b) => a.roll - b.roll);
+      
+      updateDoc(classRef, { students: updatedStudents });
       setNewRoll('');
       setIsAddStudentOpen(false);
     }
   };
 
+  const handleDeleteStudent = (roll: number) => {
+    if (classRef) {
+      const updatedStudents = (selectedClass.students || []).filter((s: any) => s.roll !== roll);
+      updateDoc(classRef, { students: updatedStudents });
+    }
+  };
+
+  const handleDeleteClass = () => {
+    if (classRef) {
+      deleteDoc(classRef);
+      setSelectedClassId(null);
+    }
+  };
+
   const handleEditClass = () => {
-    if (editClassName.trim()) {
-      editClass(selectedClass.id, editClassName.trim());
+    if (editClassName.trim() && classRef) {
+      updateDoc(classRef, { name: editClassName.trim() });
       setIsEditClassOpen(false);
     }
   };
@@ -99,7 +171,7 @@ export function AttendanceGrid() {
           <Button variant="outline" className="bg-background rounded-2xl h-12 px-6 text-sm border-muted-foreground/10 hover:bg-primary/5" onClick={() => { setEditClassName(selectedClass.name); setIsEditClassOpen(true); }}>
             <Edit className="h-4 w-4 mr-2" /> Rename
           </Button>
-          <Button variant="outline" className="text-destructive border-destructive/10 bg-destructive/5 hover:bg-destructive hover:text-white rounded-2xl h-12 px-6 text-sm transition-colors" onClick={() => deleteClass(selectedClass.id)}>
+          <Button variant="outline" className="text-destructive border-destructive/10 bg-destructive/5 hover:bg-destructive hover:text-white rounded-2xl h-12 px-6 text-sm transition-colors" onClick={handleDeleteClass}>
             <Trash2 className="h-4 w-4 mr-2" /> Remove Class
           </Button>
           <Button className="bg-primary hover:bg-primary/90 text-white rounded-2xl h-12 px-8 text-sm shadow-lg shadow-primary/20" onClick={() => setIsAddStudentOpen(true)}>
@@ -129,7 +201,7 @@ export function AttendanceGrid() {
                   return (
                     <td key={day.toISOString()} className="p-3 border-r border-b text-center">
                       <button
-                        onClick={() => toggleOnDay(selectedClass.id, dateKey)}
+                        onClick={() => handleToggleOnDay(dateKey)}
                         className={cn(
                           "h-8 w-8 rounded-xl border-2 transition-all mx-auto flex items-center justify-center",
                           isOnDay ? "bg-primary border-primary text-white shadow-md scale-110" : "bg-background border-muted-foreground/20 text-transparent hover:border-primary/50"
@@ -143,11 +215,11 @@ export function AttendanceGrid() {
               </tr>
             </thead>
             <tbody>
-              {selectedClass.students.map(student => (
+              {(selectedClass.students || []).map((student: any) => (
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
                   <th className="sticky-column bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3">
                     <span className="text-primary">{student.roll}</span>
-                    <button onClick={() => deleteStudent(selectedClass.id, student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
+                    <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </th>
@@ -184,7 +256,7 @@ export function AttendanceGrid() {
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
-                  const totalPresent = selectedClass.students.filter(s => classAttendance[dateKey]?.[s.roll]).length;
+                  const totalPresent = (selectedClass.students || []).filter((s: any) => classAttendance[dateKey]?.[s.roll]).length;
                   return (
                     <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary">
                       {isOnDay ? totalPresent : "-"}
