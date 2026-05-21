@@ -49,8 +49,26 @@ export function AttendanceGrid() {
   const handleToggleAttendance = (dateKey: string, roll: number) => {
     if (!classOnDays[dateKey]) return;
 
-    if (vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
-      window.navigator.vibrate(50);
+    const isCurrentlyPresent = !!classAttendance[dateKey]?.[roll];
+    const willBePresent = !isCurrentlyPresent;
+
+    // Custom Vibration Logic: 
+    // Vibrate only if student was absent on the previous working day (on-day) 
+    // and is now being marked as present.
+    if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
+      const sortedOnDays = Object.keys(classOnDays)
+        .filter(d => classOnDays[d])
+        .sort();
+      
+      const currentIndex = sortedOnDays.indexOf(dateKey);
+      if (currentIndex > 0) {
+        const prevOnDayKey = sortedOnDays[currentIndex - 1];
+        const wasAbsentOnPrev = !classAttendance[prevOnDayKey]?.[roll];
+        
+        if (wasAbsentOnPrev) {
+          window.navigator.vibrate([100, 50, 100]); // Welcome back double pulse
+        }
+      }
     }
 
     toggleAttendance(selectedClass.id, dateKey, roll);
@@ -74,8 +92,8 @@ export function AttendanceGrid() {
 
   return (
     <div className="flex-1 flex flex-col space-y-6">
-      <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-1 text-center md:text-left">
+      <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="space-y-1 text-center lg:text-left">
           <h2 className="text-[10px] font-headline text-muted-foreground uppercase tracking-[0.3em]">Viewing Period</h2>
           <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
         </div>
@@ -167,7 +185,6 @@ export function AttendanceGrid() {
         </div>
       </div>
 
-      {/* Add Student Dialog */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
           <DialogHeader><DialogTitle className="font-headline text-3xl italic">New Student</DialogTitle></DialogHeader>
@@ -178,7 +195,6 @@ export function AttendanceGrid() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Class Dialog */}
       <Dialog open={isEditClassOpen} onOpenChange={setIsEditClassOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
           <DialogHeader><DialogTitle className="font-headline text-3xl italic">Rename Academic Class</DialogTitle></DialogHeader>

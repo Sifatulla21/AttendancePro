@@ -61,15 +61,17 @@ export default function Home() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen bg-background pb-20">
-      <div className="max-w-6xl mx-auto w-full px-4 md:px-8">
-        <AttendanceHeader title="Attendance" />
-        <div className="space-y-6">
-          <ClassSelector />
-          <AttendanceGrid />
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
       <Navbar />
-    </main>
+      <main className="flex flex-col min-h-screen bg-background pb-24 md:pl-64">
+        <div className="max-w-7xl mx-auto w-full px-4 md:px-12 py-8">
+          <AttendanceHeader title="Attendance" />
+          <div className="space-y-8">
+            <ClassSelector />
+            <AttendanceGrid />
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
