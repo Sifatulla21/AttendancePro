@@ -117,6 +117,7 @@ export default function HistoryPage() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      // Dismiss keyboard on mobile
       (e.target as HTMLInputElement).blur();
     }
   };

@@ -18,7 +18,6 @@ export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
       return;
     }
 
-    // Set loading to true only if we don't already have data for this ref
     setLoading(true);
     const unsubscribe = onSnapshot(
       ref,
@@ -38,7 +37,7 @@ export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
     );
 
     return () => unsubscribe();
-  }, [ref?.path]); // Use path for stability
+  }, [ref?.path]);
 
   return { data, loading, error };
 }

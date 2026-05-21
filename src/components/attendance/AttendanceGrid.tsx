@@ -96,6 +96,7 @@ export function AttendanceGrid() {
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
+    // Vibrate ONLY if student missed the previous "on day" and is now present
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
@@ -211,7 +212,9 @@ export function AttendanceGrid() {
           <table className="w-full border-separate border-spacing-0 font-technical text-sm">
             <thead>
               <tr className="z-[60]">
+                {/* Roll Column Header - STICKY */}
                 <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[70] shadow-[2px_2px_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
+                {/* Date Headers - STICKY TOP */}
                 {daysInMonth.map(day => (
                   <th key={day.toISOString()} className="sticky top-0 p-4 border-r border-b min-w-[70px] text-center bg-card z-50">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
@@ -220,7 +223,9 @@ export function AttendanceGrid() {
                 ))}
               </tr>
               <tr className="bg-muted/30">
+                {/* Working Day Label - Sticky ONLY Left */}
                 <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Working</th>
+                {/* Working Day Checkboxes - NO STICKY TOP */}
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
@@ -243,12 +248,14 @@ export function AttendanceGrid() {
             <tbody>
               {(selectedClass.students || []).map((student: any) => (
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
+                  {/* Student Roll - STICKY LEFT */}
                   <th className="sticky left-0 bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <span className="text-primary">{student.roll}</span>
                     <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </th>
+                  {/* Attendance Cells */}
                   {daysInMonth.map(day => {
                     const dateKey = format(day, 'yyyy-MM-dd');
                     const isOnDay = classOnDays[dateKey];
@@ -295,6 +302,7 @@ export function AttendanceGrid() {
         </div>
       </div>
 
+      {/* Dialogs remain unchanged... */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
           <DialogHeader><DialogTitle className="font-headline text-3xl italic">New Student</DialogTitle></DialogHeader>

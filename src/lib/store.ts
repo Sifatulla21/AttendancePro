@@ -69,7 +69,7 @@ export const useStore = create<AttendanceStore>()(
       }
     }),
     {
-      name: 'attend-sync-prefs-v5',
+      name: 'attend-sync-prefs-v6', // Incremented version to ensure clean hydration
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

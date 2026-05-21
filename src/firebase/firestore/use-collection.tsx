@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Query, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
@@ -10,6 +10,9 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Use a ref to track the query identity for the effect dependency
+  const queryRef = useRef<Query<T> | null>(null);
 
   useEffect(() => {
     if (!query) {
@@ -26,7 +29,6 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setLoading(false);
       },
       async (err) => {
-        // Safe check for query path
         const path = (query as any)._query?.path?.toString() || 'unknown';
         const permissionError = new FirestorePermissionError({
           path,
@@ -39,7 +41,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     );
 
     return () => unsubscribe();
-  }, [query ? JSON.stringify((query as any)._query) : null]); // More stable dependency
+  }, [query]); // Stable if useMemo is used in the caller
 
   return { data, loading, error };
 }
