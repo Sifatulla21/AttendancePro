@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useStore } from '@/lib/store';
@@ -19,7 +20,6 @@ export function AttendanceGrid() {
   const db = useFirestore();
   const { 
     selectedClassId, 
-    setSelectedClassId,
     vibrationEnabled,
     hasHydrated
   } = useStore();
@@ -89,33 +89,13 @@ export function AttendanceGrid() {
     });
   }, [currentDate]);
 
-  if (!hasHydrated || !currentDate) return null;
-
-  if (!selectedClassId) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground bg-card/50 rounded-[3rem] border-2 border-dashed border-muted-foreground/10 font-headline italic text-xl gap-4">
-        Select a class above to begin attendance tracking
-      </div>
-    );
-  }
-  
-  if (!user || classLoading || attendanceLoading || onDaysLoading || !selectedClass) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        Synchronizing Academic Records...
-      </div>
-    );
-  }
-
   const handleToggleAttendance = (dateKey: string, roll: number) => {
-    if (!classOnDays[dateKey] || attendanceLoading) return;
+    if (!classOnDays[dateKey] || !user || !selectedClassId) return;
 
     const currentDayData = classAttendance[dateKey] || {};
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Vibration Logic: Only on "return" attendances
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
@@ -147,17 +127,12 @@ export function AttendanceGrid() {
             requestResourceData: { [roll]: willBePresent }
           }));
         });
-      } else {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'write',
-          requestResourceData: { [roll]: willBePresent }
-        }));
       }
     });
   };
 
   const handleToggleOnDay = (dateKey: string) => {
+    if (!user || !selectedClassId) return;
     const docId = `${selectedClassId}_${dateKey}`;
     const docRef = doc(db, 'users', user.uid, 'onDays', docId);
     
@@ -187,34 +162,43 @@ export function AttendanceGrid() {
     }
   };
 
-  const handleDeleteClass = () => {
-    if (classRef) {
-      deleteDoc(classRef);
-      setSelectedClassId(null);
-    }
-  };
-
-  const handleEditClass = () => {
-    if (editClassName.trim() && classRef) {
+  const handleRenameClass = () => {
+    if (classRef && editClassName.trim()) {
       updateDoc(classRef, { name: editClassName.trim() });
       setIsEditClassOpen(false);
     }
   };
 
+  if (!hasHydrated || !currentDate) return null;
+
+  if (!selectedClassId) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground bg-card/50 rounded-[3rem] border-2 border-dashed border-muted-foreground/10 font-headline italic text-xl gap-4">
+        Select a class above to begin tracking
+      </div>
+    );
+  }
+  
+  if (!user || classLoading || !selectedClass) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        Syncing Registry...
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col space-y-6">
       <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6">
         <div className="space-y-1 text-center lg:text-left">
-          <h2 className="text-[10px] font-headline text-muted-foreground uppercase tracking-[0.3em]">Viewing Period</h2>
+          <h2 className="text-[10px] font-headline text-muted-foreground uppercase tracking-[0.3em]">Month View</h2>
           <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button variant="outline" className="bg-background rounded-2xl h-12 px-6 text-sm border-muted-foreground/10 hover:bg-primary/5" onClick={() => { setEditClassName(selectedClass.name); setIsEditClassOpen(true); }}>
+          <Button variant="outline" className="bg-background rounded-2xl h-12 px-6 text-sm border-muted-foreground/10" onClick={() => { setEditClassName(selectedClass.name); setIsEditClassOpen(true); }}>
             <Edit className="h-4 w-4 mr-2" /> Rename
-          </Button>
-          <Button variant="outline" className="text-destructive border-destructive/10 bg-destructive/5 hover:bg-destructive hover:text-white rounded-2xl h-12 px-6 text-sm transition-colors" onClick={handleDeleteClass}>
-            <Trash2 className="h-4 w-4 mr-2" /> Remove Class
           </Button>
           <Button className="bg-primary hover:bg-primary/90 text-white rounded-2xl h-12 px-8 text-sm shadow-lg shadow-primary/20" onClick={() => setIsAddStudentOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" /> Add Student
@@ -236,7 +220,7 @@ export function AttendanceGrid() {
                 ))}
               </tr>
               <tr className="bg-muted/30">
-                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Day</th>
+                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Working</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
@@ -261,7 +245,7 @@ export function AttendanceGrid() {
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
                   <th className="sticky left-0 bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <span className="text-primary">{student.roll}</span>
-                    <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
+                    <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </th>
@@ -275,7 +259,7 @@ export function AttendanceGrid() {
                         onClick={() => handleToggleAttendance(dateKey, student.roll)}
                         className={cn(
                           "p-0 border-r border-b min-w-[70px] h-16 transition-all cursor-pointer relative",
-                          !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present/20 hover:bg-status-present/30" : "bg-status-absent/20 hover:bg-status-absent/30")
+                          !isOnDay ? "bg-muted/10" : (isPresent ? "bg-status-present/10 hover:bg-status-present/20" : "bg-status-absent/10 hover:bg-status-absent/20")
                         )}
                       >
                         {isOnDay && (
@@ -294,7 +278,7 @@ export function AttendanceGrid() {
             </tbody>
             <tfoot className="sticky bottom-0 z-50">
               <tr className="bg-primary/5 border-t-2 border-primary/20 backdrop-blur-md">
-                <th className="sticky left-0 bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total Attend</th>
+                <th className="sticky left-0 bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total Present</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
@@ -315,19 +299,19 @@ export function AttendanceGrid() {
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
           <DialogHeader><DialogTitle className="font-headline text-3xl italic">New Student</DialogTitle></DialogHeader>
           <div className="py-6">
-            <Input type="number" value={newRoll} onChange={(e) => setNewRoll(e.target.value)} placeholder="Enter Roll Number" className="bg-muted border-none rounded-2xl h-16 text-3xl font-technical text-center" autoFocus />
+            <Input type="number" value={newRoll} onChange={(e) => setNewRoll(e.target.value)} placeholder="Roll Number" className="bg-muted border-none rounded-2xl h-16 text-3xl font-technical text-center" autoFocus />
           </div>
-          <DialogFooter><Button onClick={handleAddStudent} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Enroll Student</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleAddStudent} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Enroll</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isEditClassOpen} onOpenChange={setIsEditClassOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
-          <DialogHeader><DialogTitle className="font-headline text-3xl italic">Rename Academic Class</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="font-headline text-3xl italic">Rename Class</DialogTitle></DialogHeader>
           <div className="py-6">
-            <Input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="Class Identifier" className="bg-muted border-none rounded-2xl h-16 text-2xl font-headline text-center" autoFocus />
+            <Input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="Class Name" className="bg-muted border-none rounded-2xl h-16 text-xl font-headline" autoFocus />
           </div>
-          <DialogFooter><Button onClick={handleEditClass} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Update Identity</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleRenameClass} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Update Name</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

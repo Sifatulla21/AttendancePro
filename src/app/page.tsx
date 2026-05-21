@@ -7,12 +7,11 @@ import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
 import { ClassSelector } from '@/components/attendance/ClassSelector';
 import { AttendanceGrid } from '@/components/attendance/AttendanceGrid';
 import { Navbar } from '@/components/layout/Navbar';
-import { LogIn, ShieldCheck } from 'lucide-react';
+import { LogIn, ShieldCheck, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { useEffect, useState } from 'react';
 
 export default function Home() {
-  const { user, loading } = useUser();
+  const { user, loading: authLoading } = useUser();
   const auth = useAuth();
   const hasHydrated = useStore((state) => state.hasHydrated);
 
@@ -25,10 +24,11 @@ export default function Home() {
     }
   };
 
-  if (loading || !hasHydrated) {
+  if (authLoading || !hasHydrated) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+      <div className="flex flex-col items-center justify-center h-screen bg-background gap-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="font-headline italic text-muted-foreground">Initializing AttendSync...</p>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export default function Home() {
           </div>
           <h1 className="text-5xl font-headline font-bold text-foreground">AttendSync Pro</h1>
           <p className="text-muted-foreground text-lg max-w-md mx-auto font-headline italic">
-            Secure, precise, and professional student attendance management for modern educators.
+            Secure, precise, and professional student attendance management. Log in to access your records.
           </p>
         </div>
 
@@ -54,9 +54,6 @@ export default function Home() {
             <LogIn className="h-6 w-6" />
             Sign in with Google
           </Button>
-          <p className="text-xs text-muted-foreground font-technical uppercase tracking-widest">
-            Authentication required to access records
-          </p>
         </div>
       </main>
     );

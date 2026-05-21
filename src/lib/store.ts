@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -24,11 +25,13 @@ interface AttendanceStore {
   setVibrationEnabled: (enabled: boolean) => void;
   toggleTheme: () => void;
   setHasHydrated: (val: boolean) => void;
+  importData: (json: string) => void;
+  exportData: () => string;
 }
 
 export const useStore = create<AttendanceStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       selectedClassId: null,
       fineRate: 20,
       vibrationEnabled: true,
@@ -40,9 +43,33 @@ export const useStore = create<AttendanceStore>()(
       setVibrationEnabled: (vibrationEnabled) => set({ vibrationEnabled }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
       setHasHydrated: (val) => set({ hasHydrated: val }),
+      
+      exportData: () => {
+        const state = get();
+        return JSON.stringify({
+          fineRate: state.fineRate,
+          vibrationEnabled: state.vibrationEnabled,
+          theme: state.theme,
+          selectedClassId: state.selectedClassId
+        });
+      },
+      
+      importData: (json) => {
+        try {
+          const data = JSON.parse(json);
+          set({
+            fineRate: data.fineRate ?? 20,
+            vibrationEnabled: data.vibrationEnabled ?? true,
+            theme: data.theme ?? 'dark',
+            selectedClassId: data.selectedClassId ?? null
+          });
+        } catch (e) {
+          throw new Error("Invalid backup file format");
+        }
+      }
     }),
     {
-      name: 'attend-sync-prefs-v2',
+      name: 'attend-sync-prefs-v4',
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

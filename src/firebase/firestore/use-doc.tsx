@@ -13,14 +13,16 @@ export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
 
   useEffect(() => {
     if (!ref) {
+      setData(null);
       setLoading(false);
       return;
     }
 
+    setLoading(true);
     const unsubscribe = onSnapshot(
       ref,
       (snapshot: DocumentSnapshot<T>) => {
-        setData(snapshot.exists() ? snapshot.data()! : null);
+        setData(snapshot.exists() ? (snapshot.data()! as T) : null);
         setLoading(false);
       },
       async (err) => {
