@@ -26,8 +26,10 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setLoading(false);
       },
       async (err) => {
+        // Safe check for query path
+        const path = (query as any)._query?.path?.toString() || 'unknown';
         const permissionError = new FirestorePermissionError({
-          path: (query as any)._query?.path?.toString() || 'unknown',
+          path,
           operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
@@ -37,7 +39,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     );
 
     return () => unsubscribe();
-  }, [query]);
+  }, [query ? JSON.stringify((query as any)._query) : null]); // More stable dependency
 
   return { data, loading, error };
 }
