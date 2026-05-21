@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
-import { useState } from 'react';
+import { doc, getDoc, collection, getDocs, setDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   const { vibrationEnabled, setVibrationEnabled, hydrateFromCloud, ...store } = useStore();
@@ -19,6 +19,34 @@ export default function SettingsPage() {
   const auth = useAuth();
   const db = useFirestore();
   const [syncing, setSyncing] = useState(false);
+
+  // Background Sync logic: Automatically save to cloud when store changes if user is logged in
+  useEffect(() => {
+    if (!user || !db) return;
+    
+    // De-bounce or simple sync
+    const syncToCloud = async () => {
+      try {
+        // Save config data
+        await setDoc(doc(db, 'users', user.uid, 'config', 'data'), {
+          attendance: store.attendance,
+          onDays: store.onDays,
+          fineRate: store.fineRate,
+          vibrationEnabled: vibrationEnabled
+        }, { merge: true });
+
+        // Save classes
+        for (const cls of store.classes) {
+          await setDoc(doc(db, 'users', user.uid, 'classes', cls.id), cls, { merge: true });
+        }
+      } catch (err) {
+        console.error("Auto-sync failed:", err);
+      }
+    };
+
+    const timeout = setTimeout(syncToCloud, 2000);
+    return () => clearTimeout(timeout);
+  }, [store.attendance, store.onDays, store.classes, store.fineRate, vibrationEnabled, user, db]);
 
   const handleLogin = async () => {
     if (!auth) return;
@@ -43,26 +71,21 @@ export default function SettingsPage() {
       const configSnap = await getDoc(doc(db, 'users', user.uid, 'config', 'data'));
       const config = configSnap.data();
       
-      if (config) {
+      if (config || classes.length > 0) {
         hydrateFromCloud({
           classes: classes as any,
-          attendance: config.attendance,
-          onDays: config.onDays,
-          fineRate: config.fineRate,
-          vibrationEnabled: config.vibrationEnabled
+          attendance: config?.attendance || {},
+          onDays: config?.onDays || {},
+          fineRate: config?.fineRate || 20,
+          vibrationEnabled: config?.vibrationEnabled ?? true
         });
-        alert("Restored all data from cloud!");
-      } else if (classes.length > 0) {
-        hydrateFromCloud({
-          classes: classes as any
-        });
-        alert("Restored classes from cloud!");
+        alert("Success: All data restored from your account!");
       } else {
         alert("No cloud data found for this account.");
       }
     } catch (err) {
       console.error(err);
-      alert("Restore failed.");
+      alert("Restore failed. Please check your connection.");
     } finally {
       setSyncing(false);
     }
@@ -74,12 +97,12 @@ export default function SettingsPage() {
       
       <div className="flex-1 p-6 space-y-8 overflow-y-auto pb-20">
         <section className="space-y-4">
-          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Cloud Restore</h2>
+          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Restore History</h2>
           {!user ? (
             <div className="bg-card p-6 rounded-2xl border text-center space-y-4">
               <Cloud className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-              <p className="text-sm text-muted-foreground">Sign in to restore your attendance history on any device.</p>
-              <Button onClick={handleLogin} className="w-full bg-primary flex gap-2">
+              <p className="text-sm text-muted-foreground">Sign in to sync and restore your attendance records on any device.</p>
+              <Button onClick={handleLogin} className="w-full bg-primary flex gap-2 rounded-xl py-6">
                 <LogIn className="h-4 w-4" />
                 Sign in with Google
               </Button>
@@ -91,17 +114,21 @@ export default function SettingsPage() {
                   <RefreshCcw className={cn("h-5 w-5 text-primary", syncing && "animate-spin")} />
                 </div>
                 <div>
-                  <h3 className="font-headline font-bold">Cloud Connected</h3>
+                  <h3 className="font-headline font-bold">Cloud Enabled</h3>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>
               
+              <div className="p-3 bg-accent rounded-xl text-xs text-accent-foreground">
+                History is automatically synced to the cloud while you are signed in.
+              </div>
+
               <Button 
-                className="w-full bg-primary text-white" 
+                className="w-full bg-primary text-white rounded-xl py-6 font-bold" 
                 onClick={restoreFromCloud} 
                 disabled={syncing}
               >
-                Restore Data from Cloud
+                Restore Records from Cloud
               </Button>
               
               <Button variant="ghost" onClick={handleLogout} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">

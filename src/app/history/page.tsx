@@ -12,7 +12,7 @@ import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Check, Search, Download } from 'lucide-react';
+import { Check, Search, Download, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -186,9 +186,10 @@ export default function HistoryPage() {
           </div>
 
           <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-7 text-xl font-headline"
+            className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-7 text-xl font-headline flex gap-2"
             onClick={() => setIsReportOpen(true)}
           >
+            <FileText className="h-6 w-6" />
             {format(currentDate, 'MMMM yyyy')} Report
           </Button>
         </div>
@@ -248,8 +249,11 @@ export default function HistoryPage() {
             </table>
           </div>
           <DialogFooter className="gap-2">
-            <Button onClick={downloadPDF} className="flex-1 bg-primary">Download PDF</Button>
-            <Button variant="ghost" onClick={() => setIsReportOpen(false)} className="flex-1">Close</Button>
+            <Button onClick={downloadPDF} className="flex-1 bg-primary rounded-xl py-6 flex gap-2">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button variant="ghost" onClick={() => setIsReportOpen(false)} className="flex-1 rounded-xl">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
