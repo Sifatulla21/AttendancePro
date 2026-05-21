@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useUser, useAuth } from '@/firebase';
@@ -63,7 +64,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="flex flex-col min-h-screen bg-background pb-24 md:pl-64">
-        <div className="max-w-7xl mx-auto w-full px-4 md:px-12 py-8">
+        <div className="max-w-7xl mx-auto w-full px-4 md:px-12 py-8" key={user.uid}>
           <AttendanceHeader title="Attendance" />
           <div className="space-y-8">
             <ClassSelector />
