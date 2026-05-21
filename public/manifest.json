@@ -1,3 +1,4 @@
+
 {
   "name": "AttendSync Pro",
   "short_name": "AttendSync",
@@ -8,12 +9,12 @@
   "theme_color": "#007D8A",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/attend192/192/192",
+      "src": "https://picsum.photos/seed/icon192/192/192",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://picsum.photos/seed/attend512/512/512",
+      "src": "https://picsum.photos/seed/icon512/512/512",
       "sizes": "512x512",
       "type": "image/png"
     }

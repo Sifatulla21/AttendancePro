@@ -1,3 +1,4 @@
+
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
@@ -36,7 +37,10 @@ export default function SettingsPage() {
       
       let errorMessage = error.message;
       if (error.code === 'auth/unauthorized-domain') {
-        errorMessage = `This domain (${window.location.hostname}) is not authorized. Please add it to the 'Authorized domains' list in your Firebase Console (Authentication > Settings).`;
+        const domain = window.location.hostname;
+        errorMessage = `This domain (${domain}) is not authorized for Google Sign-In. Please add it to the 'Authorized domains' list in your Firebase Console (Authentication > Settings).`;
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Google Sign-In is not enabled. Please enable it in the Firebase Console under Authentication > Sign-in method.";
       }
       
       console.error('Sign in error:', error);
