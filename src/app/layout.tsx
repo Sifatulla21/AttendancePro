@@ -42,7 +42,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen overscroll-none">
         <FirebaseClientProvider>
-          {children}
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-1 w-full max-w-5xl mx-auto">
+              {children}
+            </div>
+          </div>
           <FirebaseErrorListener />
           <Toaster />
         </FirebaseClientProvider>

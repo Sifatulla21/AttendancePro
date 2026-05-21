@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -61,6 +62,18 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Scrollbar Hide Utility */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
@@ -74,21 +87,19 @@ h1, h2, h3, .font-headline {
   font-family: 'PT Sans', sans-serif;
 }
 
-/* Table scroll styling */
+/* Table sticky styling */
 .sticky-column {
   position: sticky;
   left: 0;
   z-index: 10;
-  @apply bg-background;
-}
-
-.sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  @apply bg-background border-b;
+  @apply bg-card;
 }
 
 .on-day-off {
-  background-color: rgba(236, 94, 94, 0.15); /* #EC5E5E with transparency */
+  background-color: rgba(236, 94, 94, 0.08);
+}
+
+/* PWA Interaction feel */
+.overscroll-none {
+  overscroll-behavior: none;
 }

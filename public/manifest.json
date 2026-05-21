@@ -2,21 +2,23 @@
 {
   "name": "AttendSync Pro",
   "short_name": "AttendSync",
-  "description": "Pro Student Attendance Manager",
+  "description": "Professional Student Attendance Manager with Local Backup",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007D8A",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/icon192/192/192",
+      "src": "https://picsum.photos/seed/attend/192/192",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://picsum.photos/seed/icon512/512/512",
+      "src": "https://picsum.photos/seed/attend/512/512",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
