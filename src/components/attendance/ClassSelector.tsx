@@ -8,7 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-export function ClassSelector() {
+interface ClassSelectorProps {
+  showAddButton?: boolean;
+}
+
+export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
   const { classes, selectedClassId, setSelectedClassId, addClass } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newClassName, setNewClassName] = useState('');
@@ -42,13 +46,15 @@ export function ClassSelector() {
         ))}
       </div>
 
-      <Button
-        onClick={() => setIsModalOpen(true)}
-        className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 space-x-2"
-      >
-        <Plus className="h-5 w-5" />
-        <span>Add New Class</span>
-      </Button>
+      {showAddButton && (
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 space-x-2"
+        >
+          <Plus className="h-5 w-5" />
+          <span>Add New Class</span>
+        </Button>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-md">

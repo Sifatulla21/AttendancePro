@@ -207,7 +207,7 @@ export function AttendanceGrid() {
               </tr>
             ))}
           </tbody>
-          <tfoot className="sticky bottom-0 z-20 bg-card border-t font-bold">
+          <tfoot className="bg-card border-t font-bold">
             <tr>
               <th className="sticky-column bg-card border-r p-3 text-xs">Present</th>
               {daysInMonth.map(day => {

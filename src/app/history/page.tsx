@@ -89,7 +89,7 @@ export default function HistoryPage() {
       <AttendanceHeader title="History" />
       
       <div className="flex-1 flex flex-col min-h-0 space-y-6 pb-20 overflow-y-auto">
-        <ClassSelector />
+        <ClassSelector showAddButton={false} />
 
         <div className="px-6 space-y-4">
           {/* Fine Banner */}
@@ -134,7 +134,7 @@ export default function HistoryPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-headline text-foreground">Attendance - {format(currentDate, 'yyyy-MM')}</h2>
             <div className="rounded-xl border border-border overflow-hidden bg-card">
-              <div className="overflow-auto max-h-[300px]">
+              <div className="overflow-auto max-h-[400px]">
                 <table className="w-full border-collapse font-technical text-sm">
                   <thead className="sticky top-0 z-20 bg-card border-b">
                     <tr>
@@ -171,6 +171,20 @@ export default function HistoryPage() {
                         </tr>
                     ))}
                   </tbody>
+                  <tfoot className="bg-card border-t font-bold">
+                    <tr>
+                      <th className="sticky-column bg-card border-r p-3 text-xs">Present</th>
+                      {daysInMonth.map(day => {
+                        const dateKey = format(day, 'yyyy-MM-dd');
+                        const presentCount = selectedClass.students.reduce((acc, s) => acc + (classAttendance[dateKey]?.[s.roll] ? 1 : 0), 0);
+                        return (
+                          <td key={day.toISOString()} className="p-3 border-r border-b text-center text-sm">
+                            {presentCount}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
