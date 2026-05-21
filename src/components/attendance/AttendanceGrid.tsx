@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useStore } from '@/lib/store';
@@ -83,7 +82,12 @@ export function AttendanceGrid() {
     });
   }, [currentDate]);
 
-  if (!selectedClass || !user) return null;
+  if (!selectedClassId) return null;
+  if (!user || !selectedClass) return (
+    <div className="flex items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl">
+      Syncing Academic Records...
+    </div>
+  );
 
   const handleToggleAttendance = (dateKey: string, roll: number) => {
     if (!classOnDays[dateKey]) return;
@@ -186,20 +190,20 @@ export function AttendanceGrid() {
       </div>
 
       <div className="rounded-[2.5rem] border bg-card shadow-xl overflow-hidden border-border/50 relative">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[70vh]">
           <table className="w-full border-separate border-spacing-0 font-technical text-sm">
-            <thead>
-              <tr className="sticky top-0 z-50">
-                <th className="sticky-column bg-card/95 backdrop-blur-md border-r border-b p-5 font-bold w-24 text-center text-lg z-50">Roll</th>
+            <thead className="sticky top-0 z-50">
+              <tr>
+                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[60]">Roll</th>
                 {daysInMonth.map(day => (
-                  <th key={day.toISOString()} className="p-4 border-r border-b min-w-[60px] text-center bg-card/95 backdrop-blur-md">
+                  <th key={day.toISOString()} className="p-4 border-r border-b min-w-[60px] text-center bg-card">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
                     <div className="text-lg font-bold">{format(day, 'd')}</div>
                   </th>
                 ))}
               </tr>
               <tr className="bg-muted/30">
-                <th className="sticky-column bg-muted/20 border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40">On-Day</th>
+                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-[55]">On-Day</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
@@ -222,7 +226,7 @@ export function AttendanceGrid() {
             <tbody>
               {(selectedClass.students || []).map((student: any) => (
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
-                  <th className="sticky-column bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40">
+                  <th className="sticky left-0 bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40">
                     <span className="text-primary">{student.roll}</span>
                     <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
                       <Trash2 className="h-4 w-4" />
@@ -255,9 +259,9 @@ export function AttendanceGrid() {
                 </tr>
               ))}
             </tbody>
-            <tfoot className="sticky bottom-0 z-40">
+            <tfoot className="sticky bottom-0 z-50">
               <tr className="bg-primary/5 border-t-2 border-primary/20 backdrop-blur-md">
-                <th className="sticky-column bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40">Total Attend</th>
+                <th className="sticky left-0 bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40">Total Attend</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];

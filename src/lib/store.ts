@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -41,6 +40,7 @@ export const useStore = create<AttendanceStore>()(
     {
       name: 'attend-sync-prefs',
       partialize: (state) => ({ 
+        selectedClassId: state.selectedClassId, // Fix: Ensure selected class persists
         fineRate: state.fineRate, 
         vibrationEnabled: state.vibrationEnabled, 
         theme: state.theme 

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
@@ -7,19 +6,15 @@ import { Navbar } from '@/components/layout/Navbar';
 import { MonthSelector } from '@/components/attendance/MonthSelector';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useState, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Check, 
   Search, 
   Download, 
-  FileText, 
   ArrowRight, 
-  UserCircle, 
   Users, 
   Calendar as CalendarIcon,
   TrendingUp,
@@ -38,7 +33,6 @@ export default function HistoryPage() {
   const [startDate, setStartDate] = useState(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState(endOfMonth(new Date()));
   const [searchRoll, setSearchRoll] = useState('');
-  const [currentViewDate, setCurrentViewDate] = useState(new Date());
 
   // Fetch Class Metadata
   const classRef = useMemo(() => {
@@ -129,6 +123,12 @@ export default function HistoryPage() {
     };
   }, [searchRoll, rangeOnDays, classAttendance, fineRate, selectedClass]);
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   const downloadPDF = () => {
     if (!selectedClass) return;
     const doc = new jsPDF();
@@ -170,11 +170,13 @@ export default function HistoryPage() {
           <div className="space-y-8">
             <ClassSelector showAddButton={false} />
 
-            {!selectedClass ? (
+            {!selectedClassId ? (
               <div className="text-center text-muted-foreground font-headline p-20 bg-card rounded-[2.5rem] border-2 border-dashed border-muted-foreground/20">
                 <Users className="h-16 w-16 mx-auto mb-4 opacity-20" />
                 <p className="text-2xl">Select a class to access records</p>
               </div>
+            ) : !selectedClass ? (
+               <div className="text-center p-20 animate-pulse font-headline italic">Syncing Records...</div>
             ) : (
               <div className="space-y-10">
                 {/* Global Range Selector */}
@@ -280,6 +282,7 @@ export default function HistoryPage() {
                           placeholder="Search individual roll (e.g. 101)"
                           value={searchRoll}
                           onChange={(e) => setSearchRoll(e.target.value)}
+                          onKeyDown={handleSearchKeyDown}
                           className="pl-14 bg-muted/30 rounded-2xl border-none h-16 font-technical text-2xl focus:ring-primary/20"
                         />
                       </div>
