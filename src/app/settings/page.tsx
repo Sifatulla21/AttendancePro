@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useState } from 'react';
 
 export default function SettingsPage() {
@@ -30,32 +30,6 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => auth && signOut(auth);
-
-  const syncToCloud = async () => {
-    if (!user || !db) return;
-    setSyncing(true);
-    try {
-      // Save classes
-      for (const cls of store.classes) {
-        await setDoc(doc(db, 'users', user.uid, 'classes', cls.id), cls);
-      }
-      
-      // Save attendance & onDays (minimal MVP approach for prototyping)
-      await setDoc(doc(db, 'users', user.uid, 'config', 'data'), {
-        attendance: store.attendance,
-        onDays: store.onDays,
-        fineRate: store.fineRate,
-        vibrationEnabled: store.vibrationEnabled
-      });
-      
-      alert("Successfully backed up to cloud!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to sync. Check internet.");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const restoreFromCloud = async () => {
     if (!user || !db) return;
@@ -78,6 +52,13 @@ export default function SettingsPage() {
           vibrationEnabled: config.vibrationEnabled
         });
         alert("Restored all data from cloud!");
+      } else if (classes.length > 0) {
+        hydrateFromCloud({
+          classes: classes as any
+        });
+        alert("Restored classes from cloud!");
+      } else {
+        alert("No cloud data found for this account.");
       }
     } catch (err) {
       console.error(err);
@@ -93,11 +74,11 @@ export default function SettingsPage() {
       
       <div className="flex-1 p-6 space-y-8 overflow-y-auto pb-20">
         <section className="space-y-4">
-          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Cloud Backup & Restore</h2>
+          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Cloud Restore</h2>
           {!user ? (
             <div className="bg-card p-6 rounded-2xl border text-center space-y-4">
               <Cloud className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
-              <p className="text-sm text-muted-foreground">Sign in to back up your attendance history and restore it on any device.</p>
+              <p className="text-sm text-muted-foreground">Sign in to restore your attendance history on any device.</p>
               <Button onClick={handleLogin} className="w-full bg-primary flex gap-2">
                 <LogIn className="h-4 w-4" />
                 Sign in with Google
@@ -110,15 +91,18 @@ export default function SettingsPage() {
                   <RefreshCcw className={cn("h-5 w-5 text-primary", syncing && "animate-spin")} />
                 </div>
                 <div>
-                  <h3 className="font-headline font-bold">Cloud Synced</h3>
+                  <h3 className="font-headline font-bold">Cloud Connected</h3>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" onClick={syncToCloud} disabled={syncing}>Backup Now</Button>
-                <Button variant="outline" onClick={restoreFromCloud} disabled={syncing}>Restore Data</Button>
-              </div>
+              <Button 
+                className="w-full bg-primary text-white" 
+                onClick={restoreFromCloud} 
+                disabled={syncing}
+              >
+                Restore Data from Cloud
+              </Button>
               
               <Button variant="ghost" onClick={handleLogout} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
                 <LogOut className="h-4 w-4 mr-2" />
