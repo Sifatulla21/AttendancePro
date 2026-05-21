@@ -1,17 +1,20 @@
+
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
 import { ClassSelector } from '@/components/attendance/ClassSelector';
 import { Navbar } from '@/components/layout/Navbar';
+import { MonthSelector } from '@/components/attendance/MonthSelector';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, Check, Info } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { attendanceTrendSummary } from '@/ai/flows/attendance-trend-summary-flow';
+import { Check, Search, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function HistoryPage() {
   const { classes, selectedClassId, setSelectedClassId, fineRate, setFineRate, attendance, onDays } = useStore();
@@ -20,8 +23,6 @@ export default function HistoryPage() {
   const [isFineModalOpen, setIsFineModalOpen] = useState(false);
   const [newFine, setNewFine] = useState(fineRate.toString());
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<{ summary: string; predictedDropOff?: boolean } | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const selectedClass = classes.find(c => c.id === selectedClassId);
 
@@ -67,21 +68,26 @@ export default function HistoryPage() {
     ? reportData.filter(d => d.roll.toString().includes(searchRoll))
     : reportData;
 
-  const handleRunAI = async () => {
-    setIsAnalyzing(true);
-    try {
-      const result = await attendanceTrendSummary({
-        classId: selectedClass.id,
-        month: currentDate.getMonth() + 1,
-        year: currentDate.getFullYear(),
-        studentRoll: searchRoll ? parseInt(searchRoll) : undefined
-      });
-      setAiAnalysis(result);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsAnalyzing(false);
-    }
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    const monthYear = format(currentDate, 'MMMM yyyy');
+    
+    doc.setFontSize(20);
+    doc.text(`Monthly Attendance Report`, 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Class: ${selectedClass.name}`, 14, 30);
+    doc.text(`Period: ${monthYear}`, 14, 37);
+    doc.text(`Total Working Days: ${totalOnDays}`, 14, 44);
+    
+    autoTable(doc, {
+      head: [['Roll Number', 'Days Absent', 'Total Fine (BDT)']],
+      body: filteredReportData.map(d => [d.roll, d.absentDays, d.totalFine]),
+      startY: 55,
+      styles: { font: 'helvetica' },
+      headStyles: { fillColor: [0, 125, 138] }
+    });
+    
+    doc.save(`Attendance_Report_${selectedClass.name}_${format(currentDate, 'yyyy_MM')}.pdf`);
   };
 
   return (
@@ -92,7 +98,6 @@ export default function HistoryPage() {
         <ClassSelector showAddButton={false} />
 
         <div className="px-6 space-y-4">
-          {/* Fine Banner */}
           <button 
             onClick={() => setIsFineModalOpen(true)}
             className="w-full bg-secondary p-4 rounded-xl flex items-center justify-between text-secondary-foreground shadow-sm hover:brightness-95 transition-all"
@@ -101,28 +106,18 @@ export default function HistoryPage() {
             <span className="text-2xl font-technical font-bold">{fineRate} BDT</span>
           </button>
 
-          {/* Date Selector */}
           <div className="space-y-4">
             <h2 className="text-lg font-headline text-muted-foreground uppercase tracking-wider text-center">Select Month</h2>
-            <div className="flex items-center justify-between bg-card p-2 rounded-xl border">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))} className="text-primary">
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              <span className="text-xl font-headline font-bold">{format(currentDate, 'MMMM yyyy')}</span>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))} className="text-primary">
-                <ChevronRight className="h-6 w-6" />
-              </Button>
-            </div>
+            <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
           </div>
 
-          {/* Search Bar */}
           <div className="space-y-2">
             <h2 className="text-sm font-headline text-muted-foreground uppercase tracking-wider">Search by Roll</h2>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="number"
-                placeholder="Enter roll number to search"
+                placeholder="Enter roll number"
                 value={searchRoll}
                 onChange={(e) => setSearchRoll(e.target.value)}
                 className="pl-10 bg-card rounded-xl border-border h-12 font-technical"
@@ -130,7 +125,6 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {/* History View (Table) */}
           <div className="space-y-4">
             <h2 className="text-lg font-headline text-foreground">Attendance - {format(currentDate, 'yyyy-MM')}</h2>
             <div className="rounded-xl border border-border overflow-hidden bg-card">
@@ -188,44 +182,15 @@ export default function HistoryPage() {
                 </table>
               </div>
             </div>
-            <div className="text-muted-foreground font-headline font-bold text-lg">Total On Day: {totalOnDays}</div>
+            <div className="text-muted-foreground font-headline font-bold text-lg">Total Working Days: {totalOnDays}</div>
           </div>
 
-          {/* Report Button */}
           <Button 
             className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-7 text-xl font-headline"
             onClick={() => setIsReportOpen(true)}
           >
             {format(currentDate, 'MMMM yyyy')} Report
           </Button>
-
-          {/* AI Intelligence Tool */}
-          <div className="bg-card p-6 rounded-2xl border border-primary/20 space-y-4">
-            <div className="flex items-center gap-2 text-primary">
-              <Info className="h-5 w-5" />
-              <h3 className="font-headline text-lg font-bold">Attendance Intelligence</h3>
-            </div>
-            {aiAnalysis ? (
-              <div className="space-y-3">
-                <p className="text-sm leading-relaxed text-muted-foreground">{aiAnalysis.summary}</p>
-                {aiAnalysis.predictedDropOff && (
-                  <div className="p-2 bg-destructive/10 text-destructive text-xs rounded-md font-bold">
-                    ⚠️ Potential attendance drop-off detected.
-                  </div>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => setAiAnalysis(null)} className="text-xs">Reset Analysis</Button>
-              </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                className="w-full border-primary text-primary hover:bg-primary/10"
-                onClick={handleRunAI}
-                disabled={isAnalyzing}
-              >
-                {isAnalyzing ? "Analyzing Patterns..." : "Run AI Trend Analysis"}
-              </Button>
-            )}
-          </div>
         </div>
       </div>
 
@@ -256,8 +221,11 @@ export default function HistoryPage() {
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-2xl font-headline italic">Monthly Report - {format(currentDate, 'MMMM yyyy')}</DialogTitle>
+            <Button variant="outline" size="icon" onClick={downloadPDF} className="text-primary border-primary">
+              <Download className="h-4 w-4" />
+            </Button>
           </DialogHeader>
           <div className="py-4">
             <table className="w-full text-sm font-technical">
@@ -279,8 +247,9 @@ export default function HistoryPage() {
               </tbody>
             </table>
           </div>
-          <DialogFooter>
-            <Button onClick={() => setIsReportOpen(false)} className="w-full">Close Report</Button>
+          <DialogFooter className="gap-2">
+            <Button onClick={downloadPDF} className="flex-1 bg-primary">Download PDF</Button>
+            <Button variant="ghost" onClick={() => setIsReportOpen(false)} className="flex-1">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

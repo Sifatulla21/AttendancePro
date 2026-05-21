@@ -1,13 +1,15 @@
+
 "use client"
 
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { Check, Edit2, X, ChevronLeft, ChevronRight, UserPlus, Trash2, Edit } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
+import { Check, X, UserPlus, Trash2, Edit } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MonthSelector } from './MonthSelector';
 
 export function AttendanceGrid() {
   const { 
@@ -44,30 +46,11 @@ export function AttendanceGrid() {
   const classAttendance = attendance[selectedClass.id] || {};
   const classOnDays = onDays[selectedClass.id] || {};
 
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-
   const handleToggleAttendance = (dateKey: string, roll: number) => {
     if (!classOnDays[dateKey]) return;
 
-    // Vibration Logic
-    if (vibrationEnabled) {
-      const isCurrentlyPresent = classAttendance[dateKey]?.[roll];
-      if (!isCurrentlyPresent) {
-        // Find previous On-Day
-        const sortedOnDays = Object.keys(classOnDays)
-          .filter(k => classOnDays[k])
-          .sort((a, b) => b.localeCompare(a));
-        
-        const currentIndex = sortedOnDays.indexOf(dateKey);
-        const prevOnDayKey = sortedOnDays[currentIndex + 1];
-
-        if (prevOnDayKey && !classAttendance[prevOnDayKey]?.[roll]) {
-          if (typeof window !== 'undefined' && window.navigator.vibrate) {
-            window.navigator.vibrate(100);
-          }
-        }
-      }
+    if (vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
+      window.navigator.vibrate(50);
     }
 
     toggleAttendance(selectedClass.id, dateKey, roll);
@@ -91,21 +74,11 @@ export function AttendanceGrid() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background mb-16 px-6 pb-20 overflow-hidden">
-      {/* Date Picker Header */}
       <div className="py-6 space-y-4">
         <h2 className="text-lg font-headline text-muted-foreground uppercase tracking-wider text-center">Select Month</h2>
-        <div className="flex items-center justify-between bg-card p-2 rounded-xl border">
-          <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="text-primary hover:bg-accent">
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-          <span className="text-xl font-headline font-bold">{format(currentDate, 'MMMM yyyy')}</span>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth} className="text-primary hover:bg-accent">
-            <ChevronRight className="h-6 w-6" />
-          </Button>
-        </div>
+        <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
       </div>
 
-      {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <Button 
           variant="outline" 
@@ -116,7 +89,7 @@ export function AttendanceGrid() {
           }}
         >
           <Edit className="h-4 w-4 mr-2" />
-          Edit Class
+          Edit
         </Button>
         <Button 
           variant="destructive" 
@@ -131,15 +104,13 @@ export function AttendanceGrid() {
           onClick={() => setIsAddStudentOpen(true)}
         >
           <UserPlus className="h-4 w-4 mr-2" />
-          Add Student
+          Add
         </Button>
       </div>
 
-      {/* Table Container */}
       <div className="flex-1 overflow-auto rounded-xl border relative">
         <table className="w-full border-collapse font-technical">
           <thead>
-            {/* Date Header Row - Sticky */}
             <tr className="bg-card sticky top-0 z-30">
               <th className="sticky-column sticky top-0 z-40 bg-card border-r border-b p-3 text-sm font-bold w-20">Roll</th>
               {daysInMonth.map(day => (
@@ -149,7 +120,6 @@ export function AttendanceGrid() {
                 </th>
               ))}
             </tr>
-            {/* On Day Row - Not Sticky */}
             <tr className="bg-muted/50">
               <th className="sticky-column bg-muted/50 border-r border-b p-2 text-xs font-bold">On Day</th>
               {daysInMonth.map(day => {
@@ -225,7 +195,6 @@ export function AttendanceGrid() {
         </table>
       </div>
 
-      {/* Modals */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -236,7 +205,7 @@ export function AttendanceGrid() {
               type="number"
               value={newRoll}
               onChange={(e) => setNewRoll(e.target.value)}
-              placeholder="Enter Student Roll (e.g. 201)"
+              placeholder="Enter Student Roll"
               className="bg-muted border-none"
               autoFocus
             />

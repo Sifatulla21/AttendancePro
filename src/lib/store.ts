@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -46,6 +47,9 @@ interface AttendanceStore {
   setFineRate: (rate: number) => void;
   setVibrationEnabled: (enabled: boolean) => void;
   toggleTheme: () => void;
+  
+  // Hydration/Sync Actions
+  hydrateFromCloud: (data: Partial<AttendanceStore>) => void;
 }
 
 export const useStore = create<AttendanceStore>()(
@@ -120,6 +124,11 @@ export const useStore = create<AttendanceStore>()(
       setFineRate: (fineRate) => set({ fineRate }),
       setVibrationEnabled: (vibrationEnabled) => set({ vibrationEnabled }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      
+      hydrateFromCloud: (data) => set((state) => ({
+        ...state,
+        ...data
+      })),
     }),
     {
       name: 'attend-sync-storage',

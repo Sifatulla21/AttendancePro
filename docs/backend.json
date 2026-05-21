@@ -1,0 +1,49 @@
+
+{
+  "entities": {
+    "Class": {
+      "title": "Class",
+      "description": "Student class metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "students": { "type": "array", "items": { "$ref": "#/backend/entities/Student" } }
+      },
+      "required": ["id", "name", "students"]
+    },
+    "Student": {
+      "title": "Student",
+      "type": "object",
+      "properties": {
+        "roll": { "type": "number" }
+      },
+      "required": ["roll"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "type": "object",
+      "description": "A map of roll numbers to attendance status",
+      "properties": {
+        "data": { "type": "object" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}/classes/{classId}": {
+      "schema": "Class",
+      "description": "Collection of classes for a specific user"
+    },
+    "/users/{userId}/attendance/{classId}_{dateKey}": {
+      "schema": "AttendanceRecord",
+      "description": "Attendance mapping for a class on a specific date"
+    },
+    "/users/{userId}/onDays/{classId}_{dateKey}": {
+      "schema": "object",
+      "description": "Status indicating if a specific date is a working day"
+    }
+  }
+}
