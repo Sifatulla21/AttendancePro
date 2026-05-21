@@ -1,4 +1,3 @@
-
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
@@ -22,7 +21,6 @@ export default function SettingsPage() {
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
-    // Prompt the user to select an account to help with "sign-in failed" issues
     provider.setCustomParameters({
       prompt: 'select_account'
     });
@@ -34,14 +32,18 @@ export default function SettingsPage() {
         description: "Successfully signed in with Google.",
       });
     } catch (error: any) {
-      // Don't show an error if the user just closed the popup
       if (error.code === 'auth/popup-closed-by-user') return;
+      
+      let errorMessage = error.message;
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = `This domain (${window.location.hostname}) is not authorized. Please add it to the 'Authorized domains' list in your Firebase Console (Authentication > Settings).`;
+      }
       
       console.error('Sign in error:', error);
       toast({
         variant: "destructive",
         title: "Sign In Failed",
-        description: error.message || "Please ensure Google Auth is enabled in Firebase Console.",
+        description: errorMessage,
       });
     }
   };
@@ -76,7 +78,7 @@ export default function SettingsPage() {
     
     toast({
       title: "Backup Successful",
-      description: "Attendance data saved to your device.",
+      description: "Attendance history saved to your device.",
     });
   };
 
@@ -86,11 +88,19 @@ export default function SettingsPage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        importData(content);
-        toast({
-          title: "Restore Successful",
-          description: "Attendance history has been updated.",
-        });
+        try {
+          importData(content);
+          toast({
+            title: "Restore Successful",
+            description: "Attendance history has been updated.",
+          });
+        } catch (err) {
+          toast({
+            variant: "destructive",
+            title: "Restore Failed",
+            description: "Invalid backup file.",
+          });
+        }
       };
       reader.readAsText(file);
     }
@@ -134,13 +144,51 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Sign in with Google to enable account features.</p>
+                <p className="text-sm text-muted-foreground">Sign in with Google to enable sync and cloud features.</p>
                 <Button onClick={handleGoogleSignIn} className="w-full flex gap-2 rounded-xl py-6 bg-[#4285F4] hover:bg-[#4285F4]/90 text-white border-none">
                   <LogIn className="h-5 w-5" />
                   Sign up with Google
                 </Button>
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="space-y-6">
+          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Local Storage (Android Backup)</h2>
+          
+          <div className="bg-card p-6 rounded-2xl border space-y-4 shadow-sm">
+            <div className="flex items-center gap-3 text-primary mb-2">
+              <ShieldCheck className="h-6 w-6 shrink-0" />
+              <p className="text-sm font-medium">Your data is stored on this device. Use these options to backup your records to a file or restore them after a reset.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="outline" 
+                onClick={handleExport}
+                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
+              >
+                <Download className="h-5 w-5" />
+                <span>Backup to File</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
+              >
+                <Upload className="h-5 w-5" />
+                <span>Restore from File</span>
+              </Button>
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleImport} 
+              className="hidden" 
+              accept=".json"
+            />
           </div>
         </section>
 
@@ -160,50 +208,12 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="space-y-6">
-          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Local Storage</h2>
-          
-          <div className="bg-card p-6 rounded-2xl border space-y-4 shadow-sm">
-            <div className="flex items-center gap-3 text-primary mb-2">
-              <ShieldCheck className="h-6 w-6 shrink-0" />
-              <p className="text-sm font-medium">Your data is stored locally. Use backup to save history before clearing your phone's browser cache.</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="outline" 
-                onClick={handleExport}
-                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
-              >
-                <Download className="h-5 w-5" />
-                <span>Backup</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
-              >
-                <Upload className="h-5 w-5" />
-                <span>Restore</span>
-              </Button>
-            </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImport} 
-              className="hidden" 
-              accept=".json"
-            />
-          </div>
-        </section>
-
         <section className="space-y-4">
           <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">About</h2>
           <div className="bg-card p-6 rounded-2xl border">
             <p className="text-sm text-muted-foreground leading-relaxed">
               AttendSync Pro. 
-              Manage students, track fines, and keep your records safe with local file backups and Google account integration.
+              Designed for performance and reliability. Your data is backed up locally and ready for cloud sync.
             </p>
           </div>
         </section>
