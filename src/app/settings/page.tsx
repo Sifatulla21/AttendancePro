@@ -22,6 +22,11 @@ export default function SettingsPage() {
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+    // Prompt the user to select an account to help with "sign-in failed" issues
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
     try {
       await signInWithPopup(auth, provider);
       toast({
@@ -29,10 +34,14 @@ export default function SettingsPage() {
         description: "Successfully signed in with Google.",
       });
     } catch (error: any) {
+      // Don't show an error if the user just closed the popup
+      if (error.code === 'auth/popup-closed-by-user') return;
+      
+      console.error('Sign in error:', error);
       toast({
         variant: "destructive",
         title: "Sign In Failed",
-        description: error.message,
+        description: error.message || "Please ensure Google Auth is enabled in Firebase Console.",
       });
     }
   };
@@ -125,10 +134,10 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Sign in to sync your data across devices in the future.</p>
+                <p className="text-sm text-muted-foreground">Sign in with Google to enable account features.</p>
                 <Button onClick={handleGoogleSignIn} className="w-full flex gap-2 rounded-xl py-6 bg-[#4285F4] hover:bg-[#4285F4]/90 text-white border-none">
                   <LogIn className="h-5 w-5" />
-                  Sign in with Google
+                  Sign up with Google
                 </Button>
               </div>
             )}
@@ -152,7 +161,7 @@ export default function SettingsPage() {
         </section>
 
         <section className="space-y-6">
-          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Local Backup</h2>
+          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Local Storage</h2>
           
           <div className="bg-card p-6 rounded-2xl border space-y-4 shadow-sm">
             <div className="flex items-center gap-3 text-primary mb-2">
