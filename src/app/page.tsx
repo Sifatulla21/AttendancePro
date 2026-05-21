@@ -8,9 +8,9 @@ import { Navbar } from '@/components/layout/Navbar';
 
 export default function Home() {
   return (
-    <main className="flex flex-col h-screen overflow-hidden">
+    <main className="flex flex-col h-screen overflow-hidden bg-background">
       <AttendanceHeader title="Attendance" />
-      <div className="flex-1 flex flex-col min-h-0 space-y-6 pb-16">
+      <div className="flex-1 flex flex-col min-h-0 space-y-4 pb-16 overflow-hidden">
         <ClassSelector />
         <AttendanceGrid />
       </div>

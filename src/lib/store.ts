@@ -143,7 +143,6 @@ export const useStore = create<AttendanceStore>()(
           set((state) => ({
             ...state,
             ...parsed,
-            // Ensure types are maintained
             classes: parsed.classes || state.classes,
             attendance: parsed.attendance || state.attendance,
             onDays: parsed.onDays || state.onDays,
@@ -151,6 +150,7 @@ export const useStore = create<AttendanceStore>()(
           }));
         } catch (e) {
           console.error('Failed to import data', e);
+          throw new Error('Invalid backup file');
         }
       },
     }),
