@@ -48,13 +48,14 @@ interface AttendanceStore {
   setVibrationEnabled: (enabled: boolean) => void;
   toggleTheme: () => void;
   
-  // Hydration/Sync Actions
-  hydrateFromCloud: (data: Partial<AttendanceStore>) => void;
+  // Local Backup Actions
+  importData: (data: string) => void;
+  exportData: () => string;
 }
 
 export const useStore = create<AttendanceStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       classes: [
         { id: '1', name: 'Arts Girl I', students: [{ roll: 201 }, { roll: 202 }] },
         { id: '2', name: 'Science I', students: [{ roll: 101 }, { roll: 102 }] },
@@ -125,10 +126,33 @@ export const useStore = create<AttendanceStore>()(
       setVibrationEnabled: (vibrationEnabled) => set({ vibrationEnabled }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
       
-      hydrateFromCloud: (data) => set((state) => ({
-        ...state,
-        ...data
-      })),
+      exportData: () => {
+        const state = get();
+        const dataToExport = {
+          classes: state.classes,
+          attendance: state.attendance,
+          onDays: state.onDays,
+          fineRate: state.fineRate,
+        };
+        return JSON.stringify(dataToExport);
+      },
+
+      importData: (jsonData) => {
+        try {
+          const parsed = JSON.parse(jsonData);
+          set((state) => ({
+            ...state,
+            ...parsed,
+            // Ensure types are maintained
+            classes: parsed.classes || state.classes,
+            attendance: parsed.attendance || state.attendance,
+            onDays: parsed.onDays || state.onDays,
+            fineRate: parsed.fineRate ?? state.fineRate,
+          }));
+        } catch (e) {
+          console.error('Failed to import data', e);
+        }
+      },
     }),
     {
       name: 'attend-sync-storage',
