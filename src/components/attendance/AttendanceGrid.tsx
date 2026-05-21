@@ -29,19 +29,16 @@ export function AttendanceGrid() {
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [editClassName, setEditClassName] = useState('');
 
-  // Avoid hydration mismatch by setting date after mount
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
 
-  // Fetch Class Metadata
   const classRef = useMemo(() => {
     if (!user || !selectedClassId) return null;
     return doc(db, 'users', user.uid, 'classes', selectedClassId);
   }, [db, user, selectedClassId]);
   const { data: selectedClass, loading: classLoading } = useDoc<any>(classRef);
 
-  // Fetch Attendance & OnDays
   const attendanceQuery = useMemo(() => {
     if (!user || !selectedClassId) return null;
     return query(
@@ -104,7 +101,6 @@ export function AttendanceGrid() {
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Vibration Logic
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
@@ -119,13 +115,11 @@ export function AttendanceGrid() {
     const docId = `${selectedClassId}_${dateKey}`;
     const docRef = doc(db, 'users', user.uid, 'attendance', docId);
     
-    // Atomic update to prevent overwriting whole object if local state is stale
     updateDoc(docRef, {
       [`data.${roll}`]: willBePresent,
       classId: selectedClassId,
       dateKey: dateKey
     }).catch(async (err: any) => {
-      // If doc doesn't exist yet, create it
       if (err.code === 'not-found') {
         setDoc(docRef, {
           classId: selectedClassId,
@@ -216,18 +210,18 @@ export function AttendanceGrid() {
       <div className="rounded-[2.5rem] border bg-card shadow-xl overflow-hidden border-border/50 relative">
         <div className="overflow-x-auto max-h-[70vh] scrollbar-hide">
           <table className="w-full border-separate border-spacing-0 font-technical text-sm">
-            <thead className="sticky top-0 z-50">
-              <tr>
-                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[60] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
+            <thead>
+              <tr className="z-[60]">
+                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[70] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
                 {daysInMonth.map(day => (
-                  <th key={day.toISOString()} className="p-4 border-r border-b min-w-[60px] text-center bg-card">
+                  <th key={day.toISOString()} className="sticky top-0 p-4 border-r border-b min-w-[60px] text-center bg-card z-50">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
                     <div className="text-lg font-bold">{format(day, 'd')}</div>
                   </th>
                 ))}
               </tr>
               <tr className="bg-muted/30">
-                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-[55] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Day</th>
+                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Day</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
