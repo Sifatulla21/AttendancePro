@@ -1,9 +1,8 @@
-
 "use client"
 
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { Check, X, UserPlus, Trash2, Edit } from 'lucide-react';
+import { Check, UserPlus, Trash2, Edit } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -52,9 +51,7 @@ export function AttendanceGrid() {
     const isCurrentlyPresent = !!classAttendance[dateKey]?.[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Custom Vibration Logic: 
-    // Vibrate only if student was absent on the previous working day (on-day) 
-    // and is now being marked as present.
+    // Vibration Logic: Vibrate only if student was absent on previous on-day and is now present
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const sortedOnDays = Object.keys(classOnDays)
         .filter(d => classOnDays[d])
@@ -66,7 +63,7 @@ export function AttendanceGrid() {
         const wasAbsentOnPrev = !classAttendance[prevOnDayKey]?.[roll];
         
         if (wasAbsentOnPrev) {
-          window.navigator.vibrate([100, 50, 100]); // Welcome back double pulse
+          window.navigator.vibrate([100, 50, 100]);
         }
       }
     }
@@ -181,6 +178,21 @@ export function AttendanceGrid() {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="bg-primary/5 border-t-2 border-primary/20">
+                <th className="sticky-column bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary">Total Attend</th>
+                {daysInMonth.map(day => {
+                  const dateKey = format(day, 'yyyy-MM-dd');
+                  const isOnDay = classOnDays[dateKey];
+                  const totalPresent = selectedClass.students.filter(s => classAttendance[dateKey]?.[s.roll]).length;
+                  return (
+                    <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary">
+                      {isOnDay ? totalPresent : "-"}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>

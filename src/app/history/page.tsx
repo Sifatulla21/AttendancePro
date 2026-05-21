@@ -1,4 +1,3 @@
-
 "use client"
 
 import { AttendanceHeader } from '@/components/attendance/AttendanceHeader';
@@ -13,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, Search, Download, FileText } from 'lucide-react';
-import jsPDF from 'jspdf';
+import jsPDF from 'jsPDF';
 import autoTable from 'jspdf-autotable';
 import { useUser } from '@/firebase';
 
@@ -182,6 +181,21 @@ export default function HistoryPage() {
                               </tr>
                           ))}
                         </tbody>
+                        <tfoot>
+                          <tr className="bg-primary/5 border-t-2 border-primary/20">
+                            <th className="sticky-column bg-primary/10 border-r p-6 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary">Total Attend</th>
+                            {daysInMonth.map(day => {
+                              const dateKey = format(day, 'yyyy-MM-dd');
+                              const isOnDay = classOnDays[dateKey];
+                              const totalPresent = selectedClass.students.filter(s => classAttendance[dateKey]?.[s.roll]).length;
+                              return (
+                                <td key={day.toISOString()} className="p-4 border-r text-center font-bold text-xl text-primary">
+                                  {isOnDay ? totalPresent : "-"}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
@@ -226,44 +240,46 @@ export default function HistoryPage() {
       </Dialog>
 
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem] border-none shadow-2xl">
-          <DialogHeader className="p-10 border-b bg-muted/5">
-            <DialogTitle className="text-4xl font-headline italic">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-[2.5rem] border-none shadow-2xl">
+          <DialogHeader className="p-6 md:p-10 border-b bg-muted/5">
+            <DialogTitle className="text-3xl md:text-4xl font-headline italic">
               {format(currentDate, 'MMMM yyyy')} Summary
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto p-10 bg-muted/2">
+          <div className="flex-1 overflow-y-auto p-4 md:p-10 bg-muted/2">
             <div className="bg-card rounded-3xl border overflow-hidden shadow-sm">
-              <table className="w-full text-lg font-technical">
-                <thead className="border-b bg-muted/30">
-                  <tr>
-                    <th className="p-6 text-left font-bold">Roll Number</th>
-                    <th className="p-6 text-center font-bold">Total Absences</th>
-                    <th className="p-6 text-right font-bold">Fine Payable (BDT)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReportData.map(item => (
-                    <tr key={item.roll} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
-                      <td className="p-6 font-bold text-2xl">{item.roll}</td>
-                      <td className="p-6 text-center text-2xl">{item.absentDays}</td>
-                      <td className="p-6 text-right font-bold text-3xl text-status-absent">
-                        {item.totalFine.toLocaleString()}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-base md:text-lg font-technical">
+                  <thead className="border-b bg-muted/30">
+                    <tr>
+                      <th className="p-4 md:p-6 text-left font-bold">Roll Number</th>
+                      <th className="p-4 md:p-6 text-center font-bold">Absences</th>
+                      <th className="p-4 md:p-6 text-right font-bold">Fine (BDT)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredReportData.map(item => (
+                      <tr key={item.roll} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
+                        <td className="p-4 md:p-6 font-bold text-xl md:text-2xl">{item.roll}</td>
+                        <td className="p-4 md:p-6 text-center text-xl md:text-2xl">{item.absentDays}</td>
+                        <td className="p-4 md:p-6 text-right font-bold text-2xl md:text-3xl text-status-absent">
+                          {item.totalFine.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           
-          <DialogFooter className="p-10 border-t bg-card gap-6 flex-row">
-            <Button onClick={downloadPDF} className="flex-1 bg-primary hover:bg-primary/90 rounded-2xl py-8 flex gap-3 h-auto text-2xl font-headline shadow-lg shadow-primary/20">
-              <Download className="h-8 w-8" />
+          <DialogFooter className="p-6 md:p-10 border-t bg-card gap-4 md:gap-6 flex-col md:flex-row">
+            <Button onClick={downloadPDF} className="w-full md:flex-1 bg-primary hover:bg-primary/90 rounded-2xl py-6 md:py-8 flex gap-3 h-auto text-xl md:text-2xl font-headline shadow-lg shadow-primary/20">
+              <Download className="h-6 w-6 md:h-8 md:w-8" />
               Download PDF Report
             </Button>
-            <Button variant="outline" onClick={() => setIsReportOpen(false)} className="flex-1 rounded-2xl h-auto py-8 text-2xl font-headline border-2">Close</Button>
+            <Button variant="outline" onClick={() => setIsReportOpen(false)} className="w-full md:flex-1 rounded-2xl h-auto py-6 md:py-8 text-xl md:text-2xl font-headline border-2">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
