@@ -15,8 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Check, Search, Download, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useUser } from '@/firebase';
 
 export default function HistoryPage() {
+  const { user, loading: authLoading } = useUser();
   const { classes, selectedClassId, setSelectedClassId, fineRate, setFineRate, attendance, onDays } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchRoll, setSearchRoll] = useState('');
@@ -82,14 +84,19 @@ export default function HistoryPage() {
     doc.save(`Attendance_Report_${selectedClass.name}_${format(currentDate, 'yyyy_MM')}.pdf`);
   };
 
+  if (authLoading) return null;
+  if (!user) return <div className="p-10 text-center font-headline">Please login to view history.</div>;
+
   if (!selectedClass) {
     return (
-      <main className="flex flex-col h-screen bg-background">
-        <AttendanceHeader title="History" />
-        <div className="flex-1 p-6 space-y-4">
-          <ClassSelector showAddButton={false} />
-          <div className="text-center text-muted-foreground font-headline p-10 bg-card rounded-2xl border">
-            Please select a class to view records
+      <main className="flex flex-col min-h-screen bg-background pb-20">
+        <div className="max-w-6xl mx-auto w-full px-4">
+          <AttendanceHeader title="History" />
+          <div className="p-6 space-y-4">
+            <ClassSelector showAddButton={false} />
+            <div className="text-center text-muted-foreground font-headline p-20 bg-card rounded-3xl border border-dashed">
+              Please select a class to view records
+            </div>
           </div>
         </div>
         <Navbar />
@@ -98,60 +105,63 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="flex flex-col h-screen overflow-hidden bg-background">
-      <AttendanceHeader title="History" />
-      
-      <div className="flex-1 flex flex-col min-h-0 space-y-6 pb-20 overflow-y-auto">
-        <ClassSelector showAddButton={false} />
+    <main className="flex flex-col min-h-screen bg-background pb-20">
+      <div className="max-w-6xl mx-auto w-full px-4 md:px-8">
+        <AttendanceHeader title="History" />
+        
+        <div className="space-y-6">
+          <ClassSelector showAddButton={false} />
 
-        <div className="px-6 space-y-4">
-          <button 
-            onClick={() => {
-              setNewFine(fineRate.toString());
-              setIsFineModalOpen(true);
-            }}
-            className="w-full bg-secondary p-4 rounded-xl flex items-center justify-between text-secondary-foreground shadow-sm hover:brightness-95 transition-all"
-          >
-            <span className="font-headline text-xl font-bold italic">Fine:</span>
-            <span className="text-2xl font-technical font-bold">{fineRate} BDT</span>
-          </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button 
+              onClick={() => {
+                setNewFine(fineRate.toString());
+                setIsFineModalOpen(true);
+              }}
+              className="bg-secondary p-6 rounded-2xl flex items-center justify-between text-secondary-foreground shadow-sm hover:brightness-95 transition-all"
+            >
+              <span className="font-headline text-2xl font-bold italic">Fine Rate:</span>
+              <span className="text-3xl font-technical font-bold">{fineRate} BDT</span>
+            </button>
 
-          <div className="space-y-3">
-            <h2 className="text-xs font-headline text-muted-foreground uppercase tracking-widest text-center">Select Period</h2>
-            <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
+            <div className="bg-card p-6 rounded-2xl border flex flex-col justify-center space-y-3">
+              <h2 className="text-xs font-headline text-muted-foreground uppercase tracking-widest text-center">Select Period</h2>
+              <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
+            </div>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-xs font-headline text-muted-foreground uppercase tracking-widest">Filter by Roll</h2>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="number"
-                placeholder="Enter roll number"
+                placeholder="Search roll number..."
                 value={searchRoll}
                 onChange={(e) => setSearchRoll(e.target.value)}
-                className="pl-10 bg-card rounded-xl border-border h-12 font-technical"
+                className="pl-12 bg-card rounded-xl border-border h-14 font-technical text-lg"
               />
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-headline text-foreground">Monthly Ledger</h2>
-              <span className="text-xs font-technical bg-primary/10 text-primary px-3 py-1 rounded-full">
+              <h2 className="text-2xl font-headline text-foreground italic">Monthly Ledger</h2>
+              <span className="text-sm font-technical bg-primary/10 text-primary px-4 py-1.5 rounded-full font-bold">
                 {totalOnDays} Working Days
               </span>
             </div>
             
-            <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-sm">
-              <div className="overflow-auto max-h-[350px]">
+            <div className="rounded-3xl border border-border overflow-hidden bg-card shadow-sm">
+              <div className="overflow-auto max-h-[500px]">
                 <table className="w-full border-collapse font-technical text-sm">
                   <thead className="sticky top-0 z-20 bg-card border-b">
                     <tr>
-                      <th className="sticky-column bg-card p-3 border-r min-w-[70px]">Roll</th>
+                      <th className="sticky-column bg-card p-4 border-r min-w-[100px] text-lg">Roll</th>
                       {daysInMonth.map(day => (
-                        <th key={day.toISOString()} className="p-2 border-r min-w-[40px] text-center text-[10px]">
-                          {format(day, 'd')}
+                        <th key={day.toISOString()} className="p-3 border-r min-w-[50px] text-center">
+                          <div className="text-[10px] text-muted-foreground">{format(day, 'EEE')}</div>
+                          <div className="font-bold">{format(day, 'd')}</div>
                         </th>
                       ))}
                     </tr>
@@ -161,7 +171,7 @@ export default function HistoryPage() {
                       .filter(s => !searchRoll || s.roll.toString().includes(searchRoll))
                       .map(student => (
                         <tr key={student.roll} className="hover:bg-muted/5 transition-colors">
-                          <th className="sticky-column bg-card p-3 border-r border-b font-bold">{student.roll}</th>
+                          <th className="sticky-column bg-card p-4 border-r border-b font-bold text-lg">{student.roll}</th>
                           {daysInMonth.map(day => {
                             const dateKey = format(day, 'yyyy-MM-dd');
                             const isOnDay = classOnDays[dateKey];
@@ -170,11 +180,11 @@ export default function HistoryPage() {
                               <td 
                                 key={day.toISOString()} 
                                 className={cn(
-                                  "p-0 border-r border-b min-w-[40px] h-10 text-center",
-                                  !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present text-white" : "bg-status-absent text-white")
+                                  "p-0 border-r border-b min-w-[50px] h-12 text-center transition-colors",
+                                  !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present/20 text-status-present" : "bg-status-absent/20 text-status-absent")
                                 )}
                               >
-                                {isOnDay && isPresent && <Check className="h-4 w-4 mx-auto" />}
+                                {isOnDay && (isPresent ? <Check className="h-5 w-5 mx-auto" /> : "A")}
                               </td>
                             );
                           })}
@@ -187,20 +197,20 @@ export default function HistoryPage() {
           </div>
 
           <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-white rounded-2xl py-8 text-xl font-headline flex gap-2 shadow-lg shadow-primary/20"
+            className="w-full bg-primary hover:bg-primary/90 text-white rounded-2xl py-8 text-2xl font-headline flex gap-3 shadow-lg shadow-primary/20 mb-10 transition-transform active:scale-95"
             onClick={() => setIsReportOpen(true)}
           >
-            <FileText className="h-6 w-6" />
-            Download {format(currentDate, 'MMMM')} Report
+            <FileText className="h-7 w-7" />
+            Generate {format(currentDate, 'MMMM')} Report
           </Button>
         </div>
       </div>
 
       {/* Fine Dialog */}
       <Dialog open={isFineModalOpen} onOpenChange={setIsFineModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="font-headline text-2xl italic">Daily Fine Rate</DialogTitle>
+            <DialogTitle className="font-headline text-3xl italic">Daily Fine Rate</DialogTitle>
           </DialogHeader>
           <div className="py-6">
             <Input
@@ -208,48 +218,47 @@ export default function HistoryPage() {
               value={newFine}
               onChange={(e) => setNewFine(e.target.value)}
               placeholder="Amount (BDT)"
-              className="bg-muted border-none rounded-xl h-14 text-2xl text-center font-technical"
+              className="bg-muted border-none rounded-2xl h-16 text-3xl text-center font-technical"
               autoFocus
             />
           </div>
-          <DialogFooter className="flex-row gap-3">
-            <Button variant="ghost" onClick={() => setIsFineModalOpen(false)} className="flex-1 rounded-xl h-12">Cancel</Button>
+          <DialogFooter className="flex-row gap-4">
+            <Button variant="ghost" onClick={() => setIsFineModalOpen(false)} className="flex-1 rounded-xl h-14 text-lg">Cancel</Button>
             <Button onClick={() => {
               setFineRate(parseInt(newFine) || 0);
               setIsFineModalOpen(false);
-            }} className="flex-1 rounded-xl h-12 bg-primary">Save Rate</Button>
+            }} className="flex-1 rounded-xl h-14 bg-primary text-lg">Save Rate</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Report Dialog */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-hidden flex flex-col p-0 rounded-2xl">
-          <DialogHeader className="p-6 border-b">
-            <DialogTitle className="text-2xl font-headline italic flex items-center justify-between">
-              <span>{format(currentDate, 'MMMM yyyy')} Report</span>
-              <Button variant="outline" size="icon" onClick={downloadPDF} className="text-primary border-primary rounded-full">
-                <Download className="h-4 w-4" />
-              </Button>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-3xl">
+          <DialogHeader className="p-8 border-b bg-muted/10">
+            <DialogTitle className="text-3xl font-headline italic">
+              {format(currentDate, 'MMMM yyyy')} Summary
             </DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto p-6 bg-muted/20">
-            <div className="bg-card rounded-xl border overflow-hidden">
-              <table className="w-full text-sm font-technical">
-                <thead className="border-b bg-muted/50">
+          <div className="flex-1 overflow-y-auto p-8 bg-muted/5">
+            <div className="bg-card rounded-2xl border overflow-hidden shadow-sm">
+              <table className="w-full text-base font-technical">
+                <thead className="border-b bg-muted/30">
                   <tr>
-                    <th className="p-4 text-left">Roll</th>
-                    <th className="p-4 text-center">Absences</th>
-                    <th className="p-4 text-right">Fine (BDT)</th>
+                    <th className="p-5 text-left font-bold">Roll Number</th>
+                    <th className="p-5 text-center font-bold">Total Absences</th>
+                    <th className="p-5 text-right font-bold">Fine Payable (BDT)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredReportData.map(item => (
-                    <tr key={item.roll} className="border-b last:border-0 hover:bg-muted/5">
-                      <td className="p-4 font-bold">{item.roll}</td>
-                      <td className="p-4 text-center">{item.absentDays}</td>
-                      <td className="p-4 text-right font-bold text-status-absent">{item.totalFine}</td>
+                    <tr key={item.roll} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
+                      <td className="p-5 font-bold text-lg">{item.roll}</td>
+                      <td className="p-5 text-center text-lg">{item.absentDays}</td>
+                      <td className="p-5 text-right font-bold text-xl text-status-absent">
+                        {item.totalFine.toLocaleString()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -257,12 +266,12 @@ export default function HistoryPage() {
             </div>
           </div>
           
-          <DialogFooter className="p-6 border-t bg-card gap-3 flex-row">
-            <Button onClick={downloadPDF} className="flex-1 bg-primary rounded-xl py-6 flex gap-2 h-auto text-lg font-headline">
-              <Download className="h-5 w-5" />
-              Export PDF
+          <DialogFooter className="p-8 border-t bg-card gap-4 flex-row">
+            <Button onClick={downloadPDF} className="flex-1 bg-primary hover:bg-primary/90 rounded-2xl py-8 flex gap-3 h-auto text-xl font-headline shadow-lg shadow-primary/20">
+              <Download className="h-6 w-6" />
+              Download PDF Report
             </Button>
-            <Button variant="ghost" onClick={() => setIsReportOpen(false)} className="flex-1 rounded-xl h-auto py-6 border">Close</Button>
+            <Button variant="outline" onClick={() => setIsReportOpen(false)} className="flex-1 rounded-2xl h-auto py-8 text-xl font-headline border-2">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -73,108 +73,119 @@ export function AttendanceGrid() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-background px-4 md:px-6 overflow-hidden">
-      <div className="py-2 space-y-2">
-        <h2 className="text-[10px] font-headline text-muted-foreground uppercase tracking-[0.3em] text-center">Academic Period</h2>
-        <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
+    <div className="flex-1 flex flex-col space-y-6">
+      <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="space-y-1 text-center md:text-left">
+          <h2 className="text-[10px] font-headline text-muted-foreground uppercase tracking-[0.3em]">Viewing Period</h2>
+          <MonthSelector currentDate={currentDate} onDateChange={setCurrentDate} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button variant="outline" className="bg-background rounded-2xl h-12 px-6 text-sm border-muted-foreground/10 hover:bg-primary/5" onClick={() => { setEditClassName(selectedClass.name); setIsEditClassOpen(true); }}>
+            <Edit className="h-4 w-4 mr-2" /> Rename
+          </Button>
+          <Button variant="outline" className="text-destructive border-destructive/10 bg-destructive/5 hover:bg-destructive hover:text-white rounded-2xl h-12 px-6 text-sm transition-colors" onClick={() => deleteClass(selectedClass.id)}>
+            <Trash2 className="h-4 w-4 mr-2" /> Remove Class
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90 text-white rounded-2xl h-12 px-8 text-sm shadow-lg shadow-primary/20" onClick={() => setIsAddStudentOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" /> Add Student
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 my-4">
-        <Button variant="outline" className="bg-card rounded-xl h-10 text-xs border-muted-foreground/10" onClick={() => { setEditClassName(selectedClass.name); setIsEditClassOpen(true); }}>
-          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
-        </Button>
-        <Button variant="outline" className="text-destructive border-destructive/10 bg-destructive/5 hover:bg-destructive hover:text-white rounded-xl h-10 text-xs" onClick={() => deleteClass(selectedClass.id)}>
-          <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-        </Button>
-        <Button className="bg-primary text-white rounded-xl h-10 text-xs" onClick={() => setIsAddStudentOpen(true)}>
-          <UserPlus className="h-3.5 w-3.5 mr-1" /> Add
-        </Button>
-      </div>
-
-      <div className="flex-1 overflow-auto rounded-2xl border bg-card shadow-inner relative mb-2">
-        <table className="w-full border-collapse font-technical text-sm">
-          <thead>
-            <tr className="bg-card sticky top-0 z-30">
-              <th className="sticky-column sticky top-0 z-40 bg-card border-r border-b p-3 font-bold w-16 text-center">Roll</th>
-              {daysInMonth.map(day => (
-                <th key={day.toISOString()} className="p-2 border-b border-r min-w-[50px] text-center bg-card">
-                  <div className="text-[9px] uppercase text-muted-foreground font-bold">{format(day, 'EEE')}</div>
-                  <div className="text-xs font-bold">{format(day, 'd')}</div>
-                </th>
-              ))}
-            </tr>
-            <tr className="bg-muted/10">
-              <th className="sticky-column bg-muted/20 border-r border-b p-2 text-[8px] font-bold uppercase text-center">On-Day</th>
-              {daysInMonth.map(day => {
-                const dateKey = format(day, 'yyyy-MM-dd');
-                const isOnDay = classOnDays[dateKey];
-                return (
-                  <td key={day.toISOString()} className="p-2 border-r border-b text-center">
-                    <button
-                      onClick={() => toggleOnDay(selectedClass.id, dateKey)}
-                      className={cn(
-                        "h-6 w-6 rounded-lg border transition-all mx-auto flex items-center justify-center",
-                        isOnDay ? "bg-primary border-primary text-white" : "border-muted-foreground/30 text-transparent"
-                      )}
-                    >
-                      {isOnDay && <Check className="h-3 w-3" />}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {selectedClass.students.map(student => (
-              <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
-                <th className="sticky-column bg-card border-r border-b p-3 text-sm font-bold flex items-center justify-center gap-2">
-                  <span>{student.roll}</span>
-                  <button onClick={() => deleteStudent(selectedClass.id, student.roll)} className="text-destructive/30 hover:text-destructive transition-opacity">
-                    <X className="h-3 w-3" />
-                  </button>
-                </th>
+      <div className="rounded-3xl border bg-card shadow-lg overflow-hidden border-border/50">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse font-technical text-sm">
+            <thead>
+              <tr className="bg-muted/5 sticky top-0 z-30 border-b">
+                <th className="sticky-column z-40 bg-card/95 backdrop-blur-md border-r p-5 font-bold w-24 text-center text-lg">Roll</th>
+                {daysInMonth.map(day => (
+                  <th key={day.toISOString()} className="p-4 border-r min-w-[60px] text-center">
+                    <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
+                    <div className="text-lg font-bold">{format(day, 'd')}</div>
+                  </th>
+                ))}
+              </tr>
+              <tr className="bg-muted/30">
+                <th className="sticky-column bg-muted/20 border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70">On-Day</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
-                  const isPresent = classAttendance[dateKey]?.[student.roll];
                   return (
-                    <td
-                      key={day.toISOString()}
-                      onClick={() => handleToggleAttendance(dateKey, student.roll)}
-                      className={cn(
-                        "p-0 border-r border-b min-w-[50px] h-12 transition-all cursor-pointer relative",
-                        !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present text-white" : "bg-status-absent text-white")
-                      )}
-                    >
-                      {isOnDay && isPresent && <Check className="h-5 w-5 mx-auto opacity-80" />}
+                    <td key={day.toISOString()} className="p-3 border-r border-b text-center">
+                      <button
+                        onClick={() => toggleOnDay(selectedClass.id, dateKey)}
+                        className={cn(
+                          "h-8 w-8 rounded-xl border-2 transition-all mx-auto flex items-center justify-center",
+                          isOnDay ? "bg-primary border-primary text-white shadow-md scale-110" : "bg-background border-muted-foreground/20 text-transparent hover:border-primary/50"
+                        )}
+                      >
+                        {isOnDay && <Check className="h-4 w-4" />}
+                      </button>
                     </td>
                   );
                 })}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {selectedClass.students.map(student => (
+                <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
+                  <th className="sticky-column bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3">
+                    <span className="text-primary">{student.roll}</span>
+                    <button onClick={() => deleteStudent(selectedClass.id, student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </th>
+                  {daysInMonth.map(day => {
+                    const dateKey = format(day, 'yyyy-MM-dd');
+                    const isOnDay = classOnDays[dateKey];
+                    const isPresent = classAttendance[dateKey]?.[student.roll];
+                    return (
+                      <td
+                        key={day.toISOString()}
+                        onClick={() => handleToggleAttendance(dateKey, student.roll)}
+                        className={cn(
+                          "p-0 border-r border-b min-w-[60px] h-16 transition-all cursor-pointer relative",
+                          !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present/20 hover:bg-status-present/30" : "bg-status-absent/20 hover:bg-status-absent/30")
+                        )}
+                      >
+                        {isOnDay && (
+                          <div className={cn(
+                            "flex items-center justify-center w-full h-full text-2xl font-bold",
+                            isPresent ? "text-status-present" : "text-status-absent"
+                          )}>
+                            {isPresent ? <Check className="h-8 w-8" /> : "A"}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Add Student Dialog */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader><DialogTitle className="font-headline text-2xl">New Student</DialogTitle></DialogHeader>
-          <div className="py-4">
-            <Input type="number" value={newRoll} onChange={(e) => setNewRoll(e.target.value)} placeholder="Roll Number" className="bg-muted border-none rounded-xl h-14 text-2xl font-technical text-center" autoFocus />
+        <DialogContent className="sm:max-w-md rounded-3xl p-8">
+          <DialogHeader><DialogTitle className="font-headline text-3xl italic">New Student</DialogTitle></DialogHeader>
+          <div className="py-6">
+            <Input type="number" value={newRoll} onChange={(e) => setNewRoll(e.target.value)} placeholder="Enter Roll Number" className="bg-muted border-none rounded-2xl h-16 text-3xl font-technical text-center" autoFocus />
           </div>
-          <DialogFooter><Button onClick={handleAddStudent} className="bg-primary rounded-xl px-10 h-12">Add to List</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleAddStudent} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Enroll Student</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Class Dialog */}
       <Dialog open={isEditClassOpen} onOpenChange={setIsEditClassOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader><DialogTitle className="font-headline text-2xl">Rename Class</DialogTitle></DialogHeader>
-          <div className="py-4">
-            <Input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="Class Name" className="bg-muted border-none rounded-xl h-14 text-lg font-headline text-center" autoFocus />
+        <DialogContent className="sm:max-w-md rounded-3xl p-8">
+          <DialogHeader><DialogTitle className="font-headline text-3xl italic">Rename Academic Class</DialogTitle></DialogHeader>
+          <div className="py-6">
+            <Input value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="Class Identifier" className="bg-muted border-none rounded-2xl h-16 text-2xl font-headline text-center" autoFocus />
           </div>
-          <DialogFooter><Button onClick={handleEditClass} className="bg-primary rounded-xl px-10 h-12">Save Name</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleEditClass} className="w-full bg-primary rounded-2xl h-16 text-xl font-headline shadow-lg shadow-primary/20">Update Identity</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

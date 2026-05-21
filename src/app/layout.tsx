@@ -36,9 +36,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-background text-foreground min-h-screen overscroll-none">
+      <body className="font-body antialiased bg-background text-foreground min-h-screen">
         <FirebaseClientProvider>
-          <div className="max-w-md mx-auto min-h-screen relative shadow-2xl bg-background overflow-hidden border-x">
+          <div className="min-h-screen bg-background">
             {children}
           </div>
           <FirebaseErrorListener />
