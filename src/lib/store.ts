@@ -16,12 +16,14 @@ interface AttendanceStore {
   fineRate: number;
   vibrationEnabled: boolean;
   theme: 'light' | 'dark';
+  hasHydrated: boolean;
 
   // Actions
   setSelectedClassId: (id: string | null) => void;
   setFineRate: (rate: number) => void;
   setVibrationEnabled: (enabled: boolean) => void;
   toggleTheme: () => void;
+  setHasHydrated: (val: boolean) => void;
 }
 
 export const useStore = create<AttendanceStore>()(
@@ -31,16 +33,21 @@ export const useStore = create<AttendanceStore>()(
       fineRate: 20,
       vibrationEnabled: true,
       theme: 'dark',
+      hasHydrated: false,
 
       setSelectedClassId: (id) => set({ selectedClassId: id }),
       setFineRate: (fineRate) => set({ fineRate }),
       setVibrationEnabled: (vibrationEnabled) => set({ vibrationEnabled }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      setHasHydrated: (val) => set({ hasHydrated: val }),
     }),
     {
       name: 'attend-sync-prefs',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
       partialize: (state) => ({ 
-        selectedClassId: state.selectedClassId, // Fix: Ensure selected class persists
+        selectedClassId: state.selectedClassId,
         fineRate: state.fineRate, 
         vibrationEnabled: state.vibrationEnabled, 
         theme: state.theme 

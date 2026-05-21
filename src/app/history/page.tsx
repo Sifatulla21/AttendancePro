@@ -7,7 +7,7 @@ import { MonthSelector } from '@/components/attendance/MonthSelector';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,11 +28,17 @@ import { query, collection, where, doc } from 'firebase/firestore';
 export default function HistoryPage() {
   const { user, loading: authLoading } = useUser();
   const db = useFirestore();
-  const { selectedClassId, fineRate } = useStore();
+  const { selectedClassId, fineRate, hasHydrated } = useStore();
   
-  const [startDate, setStartDate] = useState(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState(endOfMonth(new Date()));
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [searchRoll, setSearchRoll] = useState('');
+
+  // Hydration safety
+  useEffect(() => {
+    setStartDate(startOfMonth(new Date()));
+    setEndDate(endOfMonth(new Date()));
+  }, []);
 
   // Fetch Class Metadata
   const classRef = useMemo(() => {
@@ -68,6 +74,7 @@ export default function HistoryPage() {
 
   // Range Calculations
   const rangeDays = useMemo(() => {
+    if (!startDate || !endDate) return [];
     try {
       return eachDayOfInterval({
         start: startOfMonth(startDate),
@@ -99,7 +106,7 @@ export default function HistoryPage() {
 
   // Individual Insight
   const studentInsight = useMemo(() => {
-    if (!searchRoll || !selectedClass) return null;
+    if (!searchRoll || !selectedClass || !startDate || !endDate) return null;
     const roll = parseInt(searchRoll);
     if (isNaN(roll)) return null;
 
@@ -121,7 +128,7 @@ export default function HistoryPage() {
         };
       }).sort((a, b) => b.date.getTime() - a.date.getTime())
     };
-  }, [searchRoll, rangeOnDays, classAttendance, fineRate, selectedClass]);
+  }, [searchRoll, rangeOnDays, classAttendance, fineRate, selectedClass, startDate, endDate]);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -130,12 +137,12 @@ export default function HistoryPage() {
   };
 
   const downloadPDF = () => {
-    if (!selectedClass) return;
+    if (!selectedClass || !startDate || !endDate) return;
     const doc = new jsPDF();
     const period = `${format(startDate, 'MMM yyyy')} - ${format(endDate, 'MMM yyyy')}`;
     
     doc.setFontSize(22);
-    doc.setTextColor(0, 125, 138); // Primary color
+    doc.setTextColor(0, 125, 138); 
     doc.text(`Academic Attendance Summary`, 14, 20);
     
     doc.setFontSize(12);
@@ -157,7 +164,7 @@ export default function HistoryPage() {
     doc.save(`Summary_${selectedClass.name}_${format(startDate, 'yyyyMM')}_${format(endDate, 'yyyyMM')}.pdf`);
   };
 
-  if (authLoading) return null;
+  if (authLoading || !hasHydrated || !startDate || !endDate) return null;
   if (!user) return <div className="p-10 text-center font-headline">Please login to view history.</div>;
 
   return (

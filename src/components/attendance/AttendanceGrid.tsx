@@ -2,9 +2,9 @@
 
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { Check, UserPlus, Trash2, Edit } from 'lucide-react';
+import { Check, UserPlus, Trash2, Edit, Loader2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,20 +23,25 @@ export function AttendanceGrid() {
     vibrationEnabled
   } = useStore();
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [newRoll, setNewRoll] = useState('');
   const [isEditClassOpen, setIsEditClassOpen] = useState(false);
   const [editClassName, setEditClassName] = useState('');
+
+  // Avoid hydration mismatch by setting date after mount
+  useEffect(() => {
+    setCurrentDate(new Date());
+  }, []);
 
   // Fetch Class Metadata
   const classRef = useMemo(() => {
     if (!user || !selectedClassId) return null;
     return doc(db, 'users', user.uid, 'classes', selectedClassId);
   }, [db, user, selectedClassId]);
-  const { data: selectedClass } = useDoc<any>(classRef);
+  const { data: selectedClass, loading: classLoading } = useDoc<any>(classRef);
 
-  // Fetch Attendance & OnDays for the month
+  // Fetch Attendance & OnDays
   const attendanceQuery = useMemo(() => {
     if (!user || !selectedClassId) return null;
     return query(
@@ -44,7 +49,7 @@ export function AttendanceGrid() {
       where('classId', '==', selectedClassId)
     );
   }, [db, user, selectedClassId]);
-  const { data: attendanceDocs } = useCollection<any>(attendanceQuery);
+  const { data: attendanceDocs, loading: attendanceLoading } = useCollection<any>(attendanceQuery);
 
   const onDaysQuery = useMemo(() => {
     if (!user || !selectedClassId) return null;
@@ -53,7 +58,7 @@ export function AttendanceGrid() {
       where('classId', '==', selectedClassId)
     );
   }, [db, user, selectedClassId]);
-  const { data: onDaysDocs } = useCollection<any>(onDaysQuery);
+  const { data: onDaysDocs, loading: onDaysLoading } = useCollection<any>(onDaysQuery);
 
   const classAttendance = useMemo(() => {
     const map: any = {};
@@ -76,27 +81,30 @@ export function AttendanceGrid() {
   }, [classOnDays]);
 
   const daysInMonth = useMemo(() => {
+    if (!currentDate) return [];
     return eachDayOfInterval({
       start: startOfMonth(currentDate),
       end: endOfMonth(currentDate)
     });
   }, [currentDate]);
 
-  if (!selectedClassId) return null;
+  if (!selectedClassId || !currentDate) return null;
+  
   if (!user || !selectedClass) return (
-    <div className="flex items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl">
+    <div className="flex flex-col items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
       Syncing Academic Records...
     </div>
   );
 
   const handleToggleAttendance = (dateKey: string, roll: number) => {
-    if (!classOnDays[dateKey]) return;
+    if (!classOnDays[dateKey] || attendanceLoading) return;
 
     const currentDayData = classAttendance[dateKey] || {};
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
-    // Vibration Logic: Vibrate only if marked present today and was absent on previous working day
+    // Vibration Logic
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
@@ -111,16 +119,32 @@ export function AttendanceGrid() {
     const docId = `${selectedClassId}_${dateKey}`;
     const docRef = doc(db, 'users', user.uid, 'attendance', docId);
     
-    setDoc(docRef, {
+    // Atomic update to prevent overwriting whole object if local state is stale
+    updateDoc(docRef, {
+      [`data.${roll}`]: willBePresent,
       classId: selectedClassId,
-      dateKey,
-      data: { ...currentDayData, [roll]: willBePresent }
-    }, { merge: true }).catch(async () => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'write',
-        requestResourceData: { [roll]: willBePresent }
-      }));
+      dateKey: dateKey
+    }).catch(async (err: any) => {
+      // If doc doesn't exist yet, create it
+      if (err.code === 'not-found') {
+        setDoc(docRef, {
+          classId: selectedClassId,
+          dateKey,
+          data: { [roll]: willBePresent }
+        }, { merge: true }).catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'write',
+            requestResourceData: { [roll]: willBePresent }
+          }));
+        });
+      } else {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'write',
+          requestResourceData: { [roll]: willBePresent }
+        }));
+      }
     });
   };
 
@@ -190,11 +214,11 @@ export function AttendanceGrid() {
       </div>
 
       <div className="rounded-[2.5rem] border bg-card shadow-xl overflow-hidden border-border/50 relative">
-        <div className="overflow-x-auto max-h-[70vh]">
+        <div className="overflow-x-auto max-h-[70vh] scrollbar-hide">
           <table className="w-full border-separate border-spacing-0 font-technical text-sm">
             <thead className="sticky top-0 z-50">
               <tr>
-                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[60]">Roll</th>
+                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[60] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
                 {daysInMonth.map(day => (
                   <th key={day.toISOString()} className="p-4 border-r border-b min-w-[60px] text-center bg-card">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
@@ -203,7 +227,7 @@ export function AttendanceGrid() {
                 ))}
               </tr>
               <tr className="bg-muted/30">
-                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-[55]">On-Day</th>
+                <th className="sticky left-0 bg-muted border-r border-b p-3 text-[10px] font-bold uppercase text-center text-primary/70 z-[55] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Day</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];
@@ -226,7 +250,7 @@ export function AttendanceGrid() {
             <tbody>
               {(selectedClass.students || []).map((student: any) => (
                 <tr key={student.roll} className="hover:bg-muted/5 transition-colors group">
-                  <th className="sticky left-0 bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40">
+                  <th className="sticky left-0 bg-card border-r border-b p-5 text-lg font-bold flex items-center justify-center gap-3 z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <span className="text-primary">{student.roll}</span>
                     <button onClick={() => handleDeleteStudent(student.roll)} className="text-destructive/20 hover:text-destructive transition-all hover:scale-125">
                       <Trash2 className="h-4 w-4" />
@@ -261,7 +285,7 @@ export function AttendanceGrid() {
             </tbody>
             <tfoot className="sticky bottom-0 z-50">
               <tr className="bg-primary/5 border-t-2 border-primary/20 backdrop-blur-md">
-                <th className="sticky left-0 bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40">Total Attend</th>
+                <th className="sticky left-0 bg-primary/10 border-r p-5 font-headline text-sm font-bold uppercase tracking-wider text-center text-primary z-40 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total Attend</th>
                 {daysInMonth.map(day => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const isOnDay = classOnDays[dateKey];

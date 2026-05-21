@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useUser, useAuth } from '@/firebase';
@@ -9,10 +8,13 @@ import { ClassSelector } from '@/components/attendance/ClassSelector';
 import { AttendanceGrid } from '@/components/attendance/AttendanceGrid';
 import { Navbar } from '@/components/layout/Navbar';
 import { LogIn, ShieldCheck } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
   const { user, loading } = useUser();
   const auth = useAuth();
+  const hasHydrated = useStore((state) => state.hasHydrated);
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -23,7 +25,7 @@ export default function Home() {
     }
   };
 
-  if (loading) {
+  if (loading || !hasHydrated) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
