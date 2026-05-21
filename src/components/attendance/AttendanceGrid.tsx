@@ -302,7 +302,6 @@ export function AttendanceGrid() {
         </div>
       </div>
 
-      {/* Dialogs remain unchanged... */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-8">
           <DialogHeader><DialogTitle className="font-headline text-3xl italic">New Student</DialogTitle></DialogHeader>
