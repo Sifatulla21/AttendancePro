@@ -1,7 +1,6 @@
-
 "use client"
 
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
@@ -20,16 +19,16 @@ interface ClassSelectorProps {
 export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
   const { user } = useUser();
   const db = useFirestore();
-  const { selectedClassId, setSelectedClassId } = useStore();
+  const { selectedClassId, setSelectedClassId, hasHydrated } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newClassName, setNewClassName] = useState('');
 
   const classesQuery = useMemo(() => {
-    if (!user) return null;
+    if (!user || !hasHydrated) return null;
     return query(collection(db, 'users', user.uid, 'classes'), orderBy('name'));
-  }, [db, user]);
+  }, [db, user, hasHydrated]);
 
-  const { data: classes } = useCollection(classesQuery);
+  const { data: classes, loading: classesLoading } = useCollection(classesQuery);
 
   const handleAddClass = () => {
     if (newClassName.trim() && user) {
@@ -54,6 +53,8 @@ export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
     }
   };
 
+  if (!hasHydrated) return null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -69,21 +70,30 @@ export function ClassSelector({ showAddButton = true }: ClassSelectorProps) {
         )}
       </div>
       
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {classes?.map((cls: any) => (
-          <button
-            key={cls.id}
-            onClick={() => setSelectedClassId(cls.id)}
-            className={cn(
-              "flex-shrink-0 px-8 py-4 rounded-2xl text-lg font-headline transition-all border-2",
-              selectedClassId === cls.id
-                ? "bg-primary text-primary-foreground border-primary shadow-xl shadow-primary/20 scale-105"
-                : "bg-card text-muted-foreground border-transparent hover:border-primary/30 hover:bg-muted"
-            )}
-          >
-            {cls.name}
-          </button>
-        ))}
+      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide min-h-[64px] items-center">
+        {classesLoading ? (
+          <div className="flex items-center gap-3 px-8 text-muted-foreground font-headline italic animate-pulse">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Fetching Registry...
+          </div>
+        ) : classes?.length === 0 ? (
+          <div className="px-8 text-muted-foreground font-headline italic">No classes established yet</div>
+        ) : (
+          classes?.map((cls: any) => (
+            <button
+              key={cls.id}
+              onClick={() => setSelectedClassId(cls.id)}
+              className={cn(
+                "flex-shrink-0 px-8 py-4 rounded-2xl text-lg font-headline transition-all border-2",
+                selectedClassId === cls.id
+                  ? "bg-primary text-primary-foreground border-primary shadow-xl shadow-primary/20 scale-105"
+                  : "bg-card text-muted-foreground border-transparent hover:border-primary/30 hover:bg-muted"
+              )}
+            >
+              {cls.name}
+            </button>
+          ))
+        )}
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

@@ -42,7 +42,7 @@ export const useStore = create<AttendanceStore>()(
       setHasHydrated: (val) => set({ hasHydrated: val }),
     }),
     {
-      name: 'attend-sync-prefs',
+      name: 'attend-sync-prefs-v2',
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

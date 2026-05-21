@@ -20,7 +20,8 @@ export function AttendanceGrid() {
   const { 
     selectedClassId, 
     setSelectedClassId,
-    vibrationEnabled
+    vibrationEnabled,
+    hasHydrated
   } = useStore();
 
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -34,27 +35,30 @@ export function AttendanceGrid() {
   }, []);
 
   const classRef = useMemo(() => {
-    if (!user || !selectedClassId) return null;
+    if (!user || !selectedClassId || !hasHydrated) return null;
     return doc(db, 'users', user.uid, 'classes', selectedClassId);
-  }, [db, user, selectedClassId]);
+  }, [db, user, selectedClassId, hasHydrated]);
+  
   const { data: selectedClass, loading: classLoading } = useDoc<any>(classRef);
 
   const attendanceQuery = useMemo(() => {
-    if (!user || !selectedClassId) return null;
+    if (!user || !selectedClassId || !hasHydrated) return null;
     return query(
       collection(db, 'users', user.uid, 'attendance'),
       where('classId', '==', selectedClassId)
     );
-  }, [db, user, selectedClassId]);
+  }, [db, user, selectedClassId, hasHydrated]);
+  
   const { data: attendanceDocs, loading: attendanceLoading } = useCollection<any>(attendanceQuery);
 
   const onDaysQuery = useMemo(() => {
-    if (!user || !selectedClassId) return null;
+    if (!user || !selectedClassId || !hasHydrated) return null;
     return query(
       collection(db, 'users', user.uid, 'onDays'),
       where('classId', '==', selectedClassId)
     );
-  }, [db, user, selectedClassId]);
+  }, [db, user, selectedClassId, hasHydrated]);
+  
   const { data: onDaysDocs, loading: onDaysLoading } = useCollection<any>(onDaysQuery);
 
   const classAttendance = useMemo(() => {
@@ -85,14 +89,24 @@ export function AttendanceGrid() {
     });
   }, [currentDate]);
 
-  if (!selectedClassId || !currentDate) return null;
+  if (!hasHydrated || !currentDate) return null;
+
+  if (!selectedClassId) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground bg-card/50 rounded-[3rem] border-2 border-dashed border-muted-foreground/10 font-headline italic text-xl gap-4">
+        Select a class above to begin attendance tracking
+      </div>
+    );
+  }
   
-  if (!user || !selectedClass) return (
-    <div className="flex flex-col items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      Syncing Academic Records...
-    </div>
-  );
+  if (!user || classLoading || attendanceLoading || onDaysLoading || !selectedClass) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 text-muted-foreground animate-pulse font-headline italic text-2xl gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        Synchronizing Academic Records...
+      </div>
+    );
+  }
 
   const handleToggleAttendance = (dateKey: string, roll: number) => {
     if (!classOnDays[dateKey] || attendanceLoading) return;
@@ -101,6 +115,7 @@ export function AttendanceGrid() {
     const isCurrentlyPresent = !!currentDayData[roll];
     const willBePresent = !isCurrentlyPresent;
 
+    // Vibration Logic: Only on "return" attendances
     if (willBePresent && vibrationEnabled && typeof window !== 'undefined' && window.navigator.vibrate) {
       const currentIndex = sortedOnDayKeys.indexOf(dateKey);
       if (currentIndex > 0) {
@@ -208,13 +223,13 @@ export function AttendanceGrid() {
       </div>
 
       <div className="rounded-[2.5rem] border bg-card shadow-xl overflow-hidden border-border/50 relative">
-        <div className="overflow-x-auto max-h-[70vh] scrollbar-hide">
+        <div className="overflow-x-auto max-h-[70vh] scrollbar-hide overscroll-none">
           <table className="w-full border-separate border-spacing-0 font-technical text-sm">
             <thead>
               <tr className="z-[60]">
-                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[70] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
+                <th className="sticky left-0 top-0 bg-card border-r border-b p-5 font-bold w-24 text-center text-lg z-[70] shadow-[2px_2px_5px_-2px_rgba(0,0,0,0.1)]">Roll</th>
                 {daysInMonth.map(day => (
-                  <th key={day.toISOString()} className="sticky top-0 p-4 border-r border-b min-w-[60px] text-center bg-card z-50">
+                  <th key={day.toISOString()} className="sticky top-0 p-4 border-r border-b min-w-[70px] text-center bg-card z-50">
                     <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-tighter">{format(day, 'EEE')}</div>
                     <div className="text-lg font-bold">{format(day, 'd')}</div>
                   </th>
@@ -259,7 +274,7 @@ export function AttendanceGrid() {
                         key={day.toISOString()}
                         onClick={() => handleToggleAttendance(dateKey, student.roll)}
                         className={cn(
-                          "p-0 border-r border-b min-w-[60px] h-16 transition-all cursor-pointer relative",
+                          "p-0 border-r border-b min-w-[70px] h-16 transition-all cursor-pointer relative",
                           !isOnDay ? "on-day-off" : (isPresent ? "bg-status-present/20 hover:bg-status-present/30" : "bg-status-absent/20 hover:bg-status-absent/30")
                         )}
                       >
