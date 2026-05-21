@@ -7,14 +7,51 @@ import { useStore } from '@/lib/store';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Download, Upload, ShieldCheck } from 'lucide-react';
+import { Download, Upload, ShieldCheck, LogIn, LogOut, User } from 'lucide-react';
 import { useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth, useUser } from '@/firebase';
+import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 export default function SettingsPage() {
   const { vibrationEnabled, setVibrationEnabled, exportData, importData } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const auth = useAuth();
+  const { user, loading } = useUser();
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      toast({
+        title: "Signed In",
+        description: "Successfully signed in with Google.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign In Failed",
+        description: error.message,
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Signed Out",
+        description: "You have been signed out.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign Out Failed",
+        description: error.message,
+      });
+    }
+  };
 
   const handleExport = () => {
     const data = exportData();
@@ -48,7 +85,6 @@ export default function SettingsPage() {
       };
       reader.readAsText(file);
     }
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -57,6 +93,48 @@ export default function SettingsPage() {
       <AttendanceHeader title="Settings" />
       
       <div className="flex-1 p-6 space-y-8 overflow-y-auto pb-20">
+        <section className="space-y-6">
+          <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Account</h2>
+          <div className="bg-card p-6 rounded-2xl border shadow-sm">
+            {loading ? (
+              <div className="animate-pulse flex items-center gap-4">
+                <div className="h-12 w-12 bg-muted rounded-full"></div>
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-muted rounded"></div>
+                  <div className="h-3 w-24 bg-muted rounded"></div>
+                </div>
+              </div>
+            ) : user ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                    {user.photoURL ? (
+                      <img src={user.photoURL} alt={user.displayName || 'User'} className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-6 w-6 text-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-bold font-headline">{user.displayName || 'User'}</h3>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Sign in to sync your data across devices in the future.</p>
+                <Button onClick={handleGoogleSignIn} className="w-full flex gap-2 rounded-xl py-6 bg-[#4285F4] hover:bg-[#4285F4]/90 text-white border-none">
+                  <LogIn className="h-5 w-5" />
+                  Sign in with Google
+                </Button>
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="space-y-6">
           <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Preferences</h2>
           
@@ -76,17 +154,17 @@ export default function SettingsPage() {
         <section className="space-y-6">
           <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">Local Backup</h2>
           
-          <div className="bg-card p-6 rounded-2xl border space-y-4">
+          <div className="bg-card p-6 rounded-2xl border space-y-4 shadow-sm">
             <div className="flex items-center gap-3 text-primary mb-2">
-              <ShieldCheck className="h-6 w-6" />
-              <p className="text-sm font-medium">Your data is stored only on this device. Use backup to save history before clearing browser cache.</p>
+              <ShieldCheck className="h-6 w-6 shrink-0" />
+              <p className="text-sm font-medium">Your data is stored locally. Use backup to save history before clearing your phone's browser cache.</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <Button 
                 variant="outline" 
                 onClick={handleExport}
-                className="flex flex-col h-auto py-4 gap-2 rounded-xl"
+                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
               >
                 <Download className="h-5 w-5" />
                 <span>Backup</span>
@@ -95,7 +173,7 @@ export default function SettingsPage() {
               <Button 
                 variant="outline" 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col h-auto py-4 gap-2 rounded-xl"
+                className="flex flex-col h-auto py-4 gap-2 rounded-xl border-dashed"
               >
                 <Upload className="h-5 w-5" />
                 <span>Restore</span>
@@ -115,8 +193,8 @@ export default function SettingsPage() {
           <h2 className="text-xl font-headline font-bold uppercase tracking-widest text-muted-foreground border-b pb-2">About</h2>
           <div className="bg-card p-6 rounded-2xl border">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              AttendSync Pro for Android. 
-              Manage students, track fines, and keep your records safe with local file backups.
+              AttendSync Pro. 
+              Manage students, track fines, and keep your records safe with local file backups and Google account integration.
             </p>
           </div>
         </section>
